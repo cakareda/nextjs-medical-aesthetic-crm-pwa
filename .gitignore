@@ -33,6 +33,13 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# runtime-generated patient files (signed consent PDFs, uploaded photos)
+/public/uploads/
+/public/signed/
+
+# stale local SQLite db containing real patient data (app now uses Postgres)
+/prisma/dev.db
+
 # vercel
 .vercel
 

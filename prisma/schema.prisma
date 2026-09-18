@@ -1,0 +1,165 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Patient {
+  id        String    @id @default(uuid())
+  fullName  String
+  phone     String?   @unique
+  birthDate DateTime?
+  gender    String?
+  allergies String?
+  notes     String?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+
+  treatments   Treatment[]
+  appointments Appointment[]
+}
+
+model Treatment {
+  id              String   @id @default(uuid())
+  patientId       String
+  patient         Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  treatmentType   String
+  productBrand    String?  
+  applicationArea String?
+  performedBy     String?  @default("Nurlana Sarıyeva")
+  notes           String?
+
+  price         Int?    @default(0)
+  paidAmount    Int?    @default(0)
+  paymentStatus String? @default("PAID")
+
+  touchUpStatus String    @default("NONE")
+  touchUpDate   DateTime?
+
+  beforePhotoUrl String?
+  afterPhotoUrl  String?
+
+  performedAt DateTime @default(now())
+
+  signSessions       SignSession[]
+  mapPoints          TreatmentMapPoint[]
+  productUsages      TreatmentProductUsage[]
+  inventoryMovements InventoryMovement[]
+}
+
+enum ProductUnit {
+  ML
+  UNIT
+  PIECE
+  UNSPECIFIED
+}
+
+model Product {
+  id            String      @id @default(uuid())
+  name          String
+  category      String      @default("")
+  unit          ProductUnit @default(UNSPECIFIED)
+   unitSize      Decimal?    @db.Decimal(10, 3)
+  stockQuantity Decimal     @default(0) @db.Decimal(10, 3)
+  minStockAlert Decimal     @default(0) @db.Decimal(10, 3)
+  unitPrice     Int?        @default(0)
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  usages    TreatmentProductUsage[]
+  movements InventoryMovement[]
+}
+
+// Bir tedavide birden fazla ürün kullanılabilsin diye ara tablo
+// (örn: dudak dolgusunda hem Elasty D hem lokal anestezi kullanılmış olabilir)
+model TreatmentProductUsage {
+  id          String    @id @default(uuid())
+  treatmentId String
+  treatment   Treatment @relation(fields: [treatmentId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity    Decimal   @db.Decimal(10, 3)
+  createdAt   DateTime  @default(now())
+
+  @@index([treatmentId])
+  @@index([productId])
+}
+
+enum MovementType {
+  IN
+  OUT
+  ADJUSTMENT
+  RETURN
+}
+
+model InventoryMovement {
+  id        String       @id @default(uuid())
+  productId String
+  product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type      MovementType
+  quantity  Decimal      @db.Decimal(10, 3)
+  note      String?
+
+  treatmentId String?
+  treatment   Treatment? @relation(fields: [treatmentId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+}
+
+model TreatmentMapPoint {
+  id          String    @id @default(uuid())
+  treatmentId String
+  treatment   Treatment @relation(fields: [treatmentId], references: [id], onDelete: Cascade)
+
+  bodyRegion String   @default("FACE")
+  xPercent   Float
+  yPercent   Float
+  label      String?
+  note       String?
+  createdAt  DateTime @default(now())
+}
+
+model Appointment {
+  id        String   @id @default(uuid())
+  patientId String?
+  patient   Patient? @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  title String
+  date  DateTime
+
+  googleEventId String? @unique
+  colorId       String?
+
+  status String @default("PENDING") // PENDING, ATTENDED, NO_SHOW
+  type   String @default("INITIAL") // INITIAL, TOUCH_UP, ROUTINE
+
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+model SignSession {
+  id          String    @id @default(uuid())
+  treatmentId String
+  treatment   Treatment @relation(fields: [treatmentId], references: [id], onDelete: Cascade)
+
+  templateFile String
+  status       String    @default("PENDING")
+  signedPdfUrl String?
+
+  birthDate   String?
+  answersJson String?
+
+  signedAt  DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model DailyNote {
+  id        String   @id @default(uuid())
+  date      String   @unique
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

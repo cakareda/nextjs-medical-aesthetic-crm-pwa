@@ -12,7 +12,16 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "public/**",
   ]),
+  {
+    rules: {
+      // Bu kural, fetch-then-setState (mount'ta veri çekme) gibi standart async
+      // efektleri de "senkron setState" sayıp hatalı şekilde işaretliyor -
+      // setState çağrıları burada .then()/await sonrası, yani gerçekten senkron değil.
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

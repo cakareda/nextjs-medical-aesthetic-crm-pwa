@@ -1,26 +1,100 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --bg-card: #ffffff;
+  --text-muted: #64748b;
+  --border-color: #e2e8f0;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), Arial, Helvetica, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Sayfa temel ayarları */
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Dokunmatik cihazlar için buton ve girdi standartları (Min 44px erişilebilirlik) */
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: 14px;
+}
+
+button {
+  min-height: 38px;
+  touch-action: manipulation;
+}
+
+/* KURUMSAL CRM RESPONSIVE DUYARLILIK KURALLARI (MOBİL < 768px) */
+@media (max-width: 768px) {
+  /* Masaüstü tablolarını mobilde gizle */
+  .desktop-table-view {
+    display: none !important;
+  }
+
+  /* Mobil kart görünümünü aktif et */
+  .mobile-card-view {
+    display: flex !important;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Grid yapılarını mobilde tek kolona düşür (Kartlar & Formlar) */
+  .responsive-grid-3,
+  .responsive-grid-2,
+  .form-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Dokunmatik buton alanlarını genişlet */
+  .touch-target {
+    min-height: 44px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* MASAÜSTÜ & TABLET KURALLARI (> 768px) */
+@media (min-width: 769px) {
+  .desktop-table-view {
+    display: table !important;
+  }
+
+  .mobile-card-view {
+    display: none !important;
+  }
+
+  .responsive-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .responsive-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .form-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
 }
