@@ -14,7 +14,7 @@ export const metadata = {
 };
 
 export const viewport = {
-  themeColor: '#2563eb',
+  themeColor: '#24152F',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -29,7 +29,7 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
-      <body style={{ margin: 0, padding: 0, background: '#f8fafc', color: '#0f172a' }}>
+      <body style={{ margin: 0, padding: 0, background: '#F5F0E8', color: '#24152F' }}>
         {children}
       </body>
     </html>

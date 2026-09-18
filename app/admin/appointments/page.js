@@ -83,6 +83,24 @@ export default function AppointmentsPage() {
   const [isNewPatientMode, setIsNewPatientMode] = useState(false);
   const [quickPatient, setQuickPatient] = useState({ fullName: '', phone: '' });
 
+  const [googleConnected, setGoogleConnected] = useState(null); // null = henüz bilinmiyor
+
+  useEffect(() => {
+    fetch('/api/auth/google/status')
+      .then((r) => r.json())
+      .then((data) => setGoogleConnected(Boolean(data.connected)))
+      .catch(() => setGoogleConnected(false));
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('google_error');
+    const connected = params.get('google');
+    if (error) alert('Google Takvim bağlanamadı: ' + error);
+    if (connected === 'connected') alert('Google Takvim başarıyla bağlandı.');
+    if (error || connected) window.history.replaceState({}, '', window.location.pathname);
+  }, []);
+
   const fetchData = useCallback(async () => {
     try {
       const [appRes, patRes] = await Promise.all([
@@ -322,7 +340,20 @@ export default function AppointmentsPage() {
           </h1>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          {googleConnected === false && (
+            <a
+              href="/api/auth/google/connect"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#fff', border: '1px solid #E2D5E5', padding: '8px 14px', borderRadius: 8, color: T.purpleDark, textDecoration: 'none', fontWeight: '700', fontSize: 13 }}
+            >
+              <IconCalendar /> Google Takvim&apos;i Bağla
+            </a>
+          )}
+          {googleConnected === true && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#E9F0EB', border: '1px solid #A7C4AF', padding: '8px 14px', borderRadius: 8, color: T.success, fontWeight: '700', fontSize: 13 }}>
+              <IconCalendar /> Google Takvim Bağlı
+            </span>
+          )}
           <Link href="/admin/patients" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#ffffff', border: `1px solid ${T.purple}50`, padding: '8px 14px', borderRadius: 8, color: T.bg, textDecoration: 'none', fontWeight: '700', fontSize: 13 }}>
             <IconArrowLeft /> Hasta Listesi
           </Link>
@@ -464,7 +495,7 @@ export default function AppointmentsPage() {
                                 </span>
                                 <span style={{ fontSize: 13, fontWeight: '700', color: '#991b1b' }}>{occupiedApp.title}</span>
                                 <span style={{ fontSize: 12, color: '#475569' }}>
-                                  — <b>{occupiedApp.patient?.fullName}</b>
+                                  — <b>{occupiedApp.patient?.fullName || 'Hasta atanmadı'}</b>
                                 </span>
                               </div>
 

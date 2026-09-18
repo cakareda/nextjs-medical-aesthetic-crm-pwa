@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getColorIdForType, getColorIdForStatus } from '@/lib/appointment-colors';
+import { createGoogleEvent, updateGoogleEvent, deleteGoogleEvent, renewWatchIfNeeded, getRequestOrigin } from '@/lib/google-calendar';
 
 const VALID_STATUSES = ['PENDING', 'ATTENDED', 'NO_SHOW', 'CANCELED'];
 
-export async function GET() {
+export async function GET(request) {
   try {
     const appointments = await prisma.appointment.findMany({
       orderBy: { date: 'asc' },
@@ -14,6 +15,12 @@ export async function GET() {
         },
       },
     });
+
+    // Ucuz, sonucu beklenmeyen yedek kontrol: cron kaçırılsa bile Google Takvim
+    // webhook kanalı sessizce süresi dolmuş kalmasın.
+    renewWatchIfNeeded(getRequestOrigin(request)).catch((err) =>
+      console.error('Google Takvim kanal yenileme (yedek kontrol) hatası:', err)
+    );
 
     return NextResponse.json(appointments);
   } catch (err) {
@@ -45,7 +52,20 @@ export async function POST(request) {
         notes,
         colorId: getColorIdForType(appointmentType),
       },
+      include: { patient: { select: { id: true, fullName: true, phone: true } } },
     });
+
+    // Google Takvim senkronu ikincil bir sistem: başarısız olursa CRM
+    // kaydını asla etkilemez, sadece loglanır.
+    try {
+      const googleEventId = await createGoogleEvent(appointment);
+      if (googleEventId) {
+        await prisma.appointment.update({ where: { id: appointment.id }, data: { googleEventId } });
+        appointment.googleEventId = googleEventId;
+      }
+    } catch (err) {
+      console.error('Google Takvim etkinliği oluşturulamadı:', err);
+    }
 
     return NextResponse.json(appointment);
   } catch (err) {
@@ -89,7 +109,22 @@ export async function PATCH(request) {
     const updated = await prisma.appointment.update({
       where: { id },
       data,
+      include: { patient: { select: { id: true, fullName: true, phone: true } } },
     });
+
+    try {
+      if (updated.googleEventId) {
+        await updateGoogleEvent(updated.googleEventId, updated);
+      } else {
+        const googleEventId = await createGoogleEvent(updated);
+        if (googleEventId) {
+          await prisma.appointment.update({ where: { id }, data: { googleEventId } });
+          updated.googleEventId = googleEventId;
+        }
+      }
+    } catch (err) {
+      console.error('Google Takvim etkinliği güncellenemedi:', err);
+    }
 
     return NextResponse.json(updated);
   } catch (err) {
@@ -104,7 +139,13 @@ export async function DELETE(request) {
 
     if (!id) return NextResponse.json({ error: 'Randevu ID gerekli' }, { status: 400 });
 
-    await prisma.appointment.delete({ where: { id } });
+    const deleted = await prisma.appointment.delete({ where: { id } });
+
+    try {
+      await deleteGoogleEvent(deleted.googleEventId);
+    } catch (err) {
+      console.error('Google Takvim etkinliği silinemedi:', err);
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

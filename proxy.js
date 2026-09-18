@@ -20,8 +20,10 @@ export function proxy(request) {
   const publicApiRoutes = [
     '/api/auth/login',
     '/api/auth/logout',
+    '/api/auth/google/callback',
     '/api/sign-pdf',
     '/api/webhooks/google-calendar',
+    '/api/cron/renew-google-watch',
   ];
 
   const isProtectedApi =

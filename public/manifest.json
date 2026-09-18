@@ -1,11 +1,11 @@
 {
-  "name": "Nurlana Sarıyeva CRM",
-  "short_name": "Klinik CRM",
-  "description": "Nurlana Sarıyeva Medikal Estetik Kliniği Hasta & Stok Yönetim Sistemi",
+  "name": "Novantis Sağlık & Güzellik",
+  "short_name": "Novantis",
+  "description": "Novantis Sağlık & Güzellik Hasta & Stok Yönetim Sistemi",
   "start_url": "/admin",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#2563eb",
+  "background_color": "#24152F",
+  "theme_color": "#24152F",
   "icons": [
     {
       "src": "/icon-192.png",
