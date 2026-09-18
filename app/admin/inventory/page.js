@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { Playfair_Display, Inter } from 'next/font/google';
+import { T } from '@/lib/theme';
+import Drawer from '@/components/Drawer';
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -15,18 +17,6 @@ const inter = Inter({
   weight: ['400', '500', '600', '700'],
   variable: '--font-inter',
 });
-
-const T = {
-  bg: '#24152F',
-  purple: '#5A3A70',
-  purpleDark: '#4A2859',
-  gold: '#C9A45C',
-  cream: '#FBF3EC',
-  white: '#FFFFFF',
-  success: '#789681',
-  error: '#E8C9D1',
-  errorText: '#8B4A5A',
-};
 
 const serif = 'var(--font-playfair), Georgia, serif';
 const sans = 'var(--font-inter), sans-serif';
@@ -81,6 +71,7 @@ export default function InventoryPage() {
   const [bulkSeeding, setBulkSeeding] = useState(false);
 
   const [newProduct, setNewProduct] = useState(emptyProduct);
+  const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
 
   const [movementProduct, setMovementProduct] = useState(null);
   const [movementQuantity, setMovementQuantity] = useState('');
@@ -198,6 +189,7 @@ export default function InventoryPage() {
       const data = await res.json();
       if (!res.ok) { alert(data.error || 'Ürün eklenemedi'); return; }
       setNewProduct(emptyProduct);
+      setIsAddDrawerOpen(false);
       await fetchProducts();
     } catch (err) {
       console.error(err);
@@ -354,11 +346,11 @@ export default function InventoryPage() {
   };
 
   return (
-    <div className={`${playfair.variable} ${inter.variable}`} style={{ background: T.bg, minHeight: '100vh', padding: '28px 16px 60px', fontFamily: sans }}>
-      <div style={{ maxWidth: 1120, margin: '0 auto' }}>
+    <div className={`${playfair.variable} ${inter.variable}`} style={{ fontFamily: sans }}>
+      <div style={{ maxWidth: 1180, margin: '0 auto' }}>
 
-        {/* ZARİF BAŞLIK */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginBottom: 30 }}>
+        {/* ÜST BAR (koyu mürdüm) */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginBottom: 24, background: T.bg, borderRadius: 16, padding: '20px 26px' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
               <IconLeaf size={16} />
@@ -366,168 +358,179 @@ export default function InventoryPage() {
                 Novantis
               </span>
             </div>
-            <h1 style={{ margin: 0, fontFamily: serif, fontSize: 32, fontWeight: 600, color: T.white, letterSpacing: '0.01em' }}>
+            <h1 style={{ margin: 0, fontFamily: serif, fontSize: 30, fontWeight: 600, color: T.white, letterSpacing: '0.01em' }}>
               Stok &amp; Envanter
             </h1>
-            <div style={{ width: 54, height: 1.5, background: T.gold, marginTop: 12, opacity: 0.8 }} />
           </div>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button type="button" onClick={handleBulkSeed} disabled={bulkSeeding} style={btnStyle('#789681', '#fff', bulkSeeding)}>
               {bulkSeeding ? 'Yükleniyor...' : 'Ürün İsim Listesini Yükle'}
             </button>
-            <Link href="/admin" style={{ ...btnStyle(T.purpleDark, T.cream), textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <button type="button" onClick={() => setIsAddDrawerOpen(true)} style={btnStyle(T.gold, T.bg)}>
+              + Yeni Ürün Ekle
+            </button>
+            <Link href="/admin" style={{ ...btnStyle(T.purpleDark, T.gold), textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <IconArrowLeft /> Anasayfa
             </Link>
           </div>
         </div>
 
-        <div className="responsive-grid-2" style={{ alignItems: 'start', gap: 22 }}>
-
-          {/* YENİ ÜRÜN FORMU */}
-          <form onSubmit={handleAddProduct} style={panelStyle}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
-              <IconLeaf size={15} color={T.purpleDark} />
-              <h3 style={{ margin: 0, fontFamily: serif, fontSize: 19, fontWeight: 600, color: T.bg }}>Yeni Ürün</h3>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <Field label="Ürün Adı">
-                <input placeholder="Örn: Elasty D plus" value={newProduct.name} onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} style={inputStyle} />
-              </Field>
-
-              <Field label="Kategori (istediğinizi yazın)">
-                <input list="category-suggestions" placeholder="Örn: Dolgu, Botoks, Mezoterapi..." value={newProduct.category} onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })} style={inputStyle} />
-                <datalist id="category-suggestions">
-                  {categorySuggestions.map((c) => <option key={c} value={c} />)}
-                </datalist>
-              </Field>
-
-              <Field label="Birim">
-                <select
-                  value={newProduct.unit}
-                  onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value, unitSize: '', packageCount: '', stockQuantity: '' })}
-                  style={inputStyle}
-                >
-                  <option value="UNSPECIFIED">Seçiniz</option>
-                  <option value="ML">ml</option>
-                  <option value="UNIT">Ünite</option>
-                  <option value="PIECE">Adet</option>
-                </select>
-              </Field>
-
-              {isNewProductPackageAware ? (
-                <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <Field label={newProduct.unit === 'ML' ? 'Şişe Başına Kaç ml' : 'Flakon Başına Kaç Ünite'}>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.001"
-                        placeholder={newProduct.unit === 'ML' ? 'Örn: 1' : 'Örn: 100'}
-                        value={newProduct.unitSize}
-                        onChange={(e) => setNewProduct({ ...newProduct, unitSize: e.target.value })}
-                        style={inputStyle}
-                      />
-                    </Field>
-                    <Field label="Kaç Adet / Şişe Var">
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        placeholder="Örn: 5"
-                        value={newProduct.packageCount}
-                        onChange={(e) => setNewProduct({ ...newProduct, packageCount: e.target.value })}
-                        style={inputStyle}
-                      />
-                    </Field>
-                  </div>
-                  {newProductComputedTotal !== null && (
-                    <div style={{ fontSize: 12, color: T.purple, fontWeight: 600 }}>
-                      Toplam stok: {newProductComputedTotal} {UNIT_LABELS[newProduct.unit]}
-                    </div>
-                  )}
-                </>
+        {/* ÜRÜN TABLOSU */}
+        <div style={{ background: T.white, border: '1px solid rgba(90,58,112,0.16)', borderRadius: 16, overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13.5 }}>
+            <thead>
+              <tr style={{ background: T.cream, borderBottom: '1px solid rgba(90,58,112,0.16)' }}>
+                <th style={thStyle}>Ürün Adı</th>
+                <th style={thStyle}>Kategori</th>
+                <th style={thStyle}>Birim</th>
+                <th style={{ ...thStyle, textAlign: 'right' }}>Stok Adedi</th>
+                <th style={{ ...thStyle, textAlign: 'center' }}>Stok Hareketi</th>
+                <th style={{ ...thStyle, textAlign: 'right' }}>Eylemler</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: T.purple, fontWeight: 600 }}>Yükleniyor...</td></tr>
+              ) : products.length === 0 ? (
+                <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: T.purple }}>Kayıtlı ürün bulunmuyor.</td></tr>
               ) : (
-                <Field label="Başlangıç Stoku">
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.001"
-                    placeholder="Örn: 10 veya 2.5"
-                    value={newProduct.stockQuantity}
-                    onChange={(e) => setNewProduct({ ...newProduct, stockQuantity: e.target.value })}
-                    style={inputStyle}
-                  />
-                </Field>
-              )}
+                products.map((prod) => {
+                  const stock = Number(prod.stockQuantity);
+                  const minStock = Number(prod.minStockAlert);
+                  const isCritical = stock <= minStock;
+                  const hasCategory = Boolean(prod.category && prod.category.trim());
+                  const hasUnit = prod.unit !== 'UNSPECIFIED';
+                  const unitLabel = UNIT_LABELS[prod.unit] || prod.unit;
+                  const hasUnitSize = PACKAGE_AWARE_UNITS.includes(prod.unit) && prod.unitSize !== null && prod.unitSize !== undefined && Number(prod.unitSize) > 0;
+                  const approxCount = hasUnitSize ? (stock / Number(prod.unitSize)) : null;
 
-              <Field label="Kritik Stok Uyarısı (toplam üzerinden)">
-                <input type="number" min="0" step="0.001" placeholder="Örn: 2" value={newProduct.minStockAlert} onChange={(e) => setNewProduct({ ...newProduct, minStockAlert: e.target.value })} style={inputStyle} />
-              </Field>
-
-              <button type="submit" disabled={saving} style={{ ...btnStyle(T.purpleDark, T.gold, saving), marginTop: 4, padding: '13px', fontSize: 14 }}>
-                {saving ? 'Kaydediliyor...' : 'Ürünü Kaydet'}
-              </button>
-            </div>
-          </form>
-
-          {/* ÜRÜN LİSTESİ */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {loading ? (
-              <div style={{ ...panelStyle, textAlign: 'center', color: T.purple, fontWeight: 600 }}>Yükleniyor...</div>
-            ) : products.length === 0 ? (
-              <div style={{ ...panelStyle, textAlign: 'center', color: T.purple }}>Kayıtlı ürün bulunmuyor.</div>
-            ) : (
-              products.map((prod) => {
-                const stock = Number(prod.stockQuantity);
-                const minStock = Number(prod.minStockAlert);
-                const isCritical = stock <= minStock;
-                const hasCategory = Boolean(prod.category && prod.category.trim());
-                const hasUnit = prod.unit !== 'UNSPECIFIED';
-                const unitLabel = UNIT_LABELS[prod.unit] || prod.unit;
-                const hasUnitSize = PACKAGE_AWARE_UNITS.includes(prod.unit) && prod.unitSize !== null && prod.unitSize !== undefined && Number(prod.unitSize) > 0;
-                const approxCount = hasUnitSize ? (stock / Number(prod.unitSize)) : null;
-
-                return (
-                  <div key={prod.id} style={{ ...productCardStyle, borderColor: isCritical ? 'rgba(232,201,209,0.9)' : 'rgba(90,58,112,0.16)' }}>
-                    <div style={{ minWidth: 190, flex: '1 1 190px' }}>
-                      <div style={{ fontFamily: serif, fontSize: 17, fontWeight: 600, color: T.bg }}>{prod.name}</div>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                        <span style={hasCategory ? chipStyle : chipMutedStyle}>{hasCategory ? prod.category : 'Kategori girilmedi'}</span>
-                        <span style={hasUnit ? chipStyle : chipMutedStyle}>{hasUnit ? unitLabel : 'Birim girilmedi'}</span>
-                        {isCritical && <span style={{ ...chipStyle, background: T.error, color: T.errorText }}>Stok Azaldı</span>}
-                      </div>
-                      {hasUnitSize && (
-                        <div style={{ fontSize: 11, color: T.purple, marginTop: 6 }}>
-                          Şişe boyutu: {prod.unitSize} {unitLabel} · ≈ {approxCount.toFixed(1)} adet/şişe
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
-                      <div style={{ textAlign: 'right', minWidth: 64 }}>
-                        <div style={{ fontFamily: serif, fontSize: 22, fontWeight: 700, color: isCritical ? T.errorText : T.success, lineHeight: 1 }}>
+                  return (
+                    <tr key={prod.id} style={{ borderBottom: '1px solid rgba(90,58,112,0.10)' }}>
+                      <td style={tdStyle}>
+                        <div style={{ fontFamily: serif, fontSize: 15, fontWeight: 600, color: T.bg }}>{prod.name}</div>
+                        {hasUnitSize && (
+                          <div style={{ fontSize: 11, color: T.purple, marginTop: 4 }}>
+                            Şişe: {prod.unitSize} {unitLabel} · ≈ {approxCount.toFixed(1)} adet/şişe
+                          </div>
+                        )}
+                      </td>
+                      <td style={tdStyle}>
+                        <span style={hasCategory ? chipStyle : chipMutedStyle}>{hasCategory ? prod.category : '—'}</span>
+                      </td>
+                      <td style={tdStyle}>
+                        <span style={hasUnit ? chipStyle : chipMutedStyle}>{hasUnit ? unitLabel : '—'}</span>
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>
+                        <span style={{ fontFamily: serif, fontSize: 17, fontWeight: 700, color: isCritical ? T.errorText : T.success }}>
                           {prod.stockQuantity}
+                        </span>
+                        <span style={{ fontSize: 11, color: T.purple, marginLeft: 4 }}>{unitLabel}</span>
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: 'center' }}>
+                        <div style={{ display: 'inline-flex', gap: 6 }}>
+                          <button type="button" onClick={() => openMovement(prod)} style={ghostBtnStyle(T.success)}>+ Ekle</button>
+                          <button type="button" onClick={() => openMovement(prod)} style={ghostBtnStyle(T.purpleDark)}>− Azalt</button>
                         </div>
-                        <div style={{ fontSize: 10.5, color: T.purple, fontWeight: 600, marginTop: 3, letterSpacing: '0.03em' }}>{unitLabel}</div>
-                      </div>
-
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <IconBtn onClick={() => openEdit(prod)} title="Düzenle" bg="#EFE3F3" color={T.purpleDark}><IconEdit /></IconBtn>
-                        <button type="button" onClick={() => openMovement(prod)} style={{ background: T.purpleDark, color: T.gold, border: 'none', borderRadius: 8, padding: '9px 13px', fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
-                          Stok Hareketi
-                        </button>
-                        <IconBtn onClick={() => handleDeleteProduct(prod.id, prod.name)} title="Pasifleştir" bg={T.error} color={T.errorText}><IconTrash /></IconBtn>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: 6 }}>
+                          <IconBtn onClick={() => openEdit(prod)} title="Düzenle" bg="#EFE3F3" color={T.purpleDark}><IconEdit /></IconBtn>
+                          <IconBtn onClick={() => handleDeleteProduct(prod.id, prod.name)} title="Pasifleştir" bg={T.error} color={T.errorText}><IconTrash /></IconBtn>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
+
+      <Drawer open={isAddDrawerOpen} onClose={() => setIsAddDrawerOpen(false)} title="Yeni Ürün Ekle">
+        <form onSubmit={handleAddProduct}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <Field label="Ürün Adı">
+              <input placeholder="Örn: Elasty D plus" value={newProduct.name} onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} style={inputStyle} />
+            </Field>
+
+            <Field label="Kategori (istediğinizi yazın)">
+              <input list="category-suggestions" placeholder="Örn: Dolgu, Botoks, Mezoterapi..." value={newProduct.category} onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })} style={inputStyle} />
+              <datalist id="category-suggestions">
+                {categorySuggestions.map((c) => <option key={c} value={c} />)}
+              </datalist>
+            </Field>
+
+            <Field label="Birim">
+              <select
+                value={newProduct.unit}
+                onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value, unitSize: '', packageCount: '', stockQuantity: '' })}
+                style={inputStyle}
+              >
+                <option value="UNSPECIFIED">Seçiniz</option>
+                <option value="ML">ml</option>
+                <option value="UNIT">Ünite</option>
+                <option value="PIECE">Adet</option>
+              </select>
+            </Field>
+
+            {isNewProductPackageAware ? (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <Field label={newProduct.unit === 'ML' ? 'Şişe Başına Kaç ml' : 'Flakon Başına Kaç Ünite'}>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.001"
+                      placeholder={newProduct.unit === 'ML' ? 'Örn: 1' : 'Örn: 100'}
+                      value={newProduct.unitSize}
+                      onChange={(e) => setNewProduct({ ...newProduct, unitSize: e.target.value })}
+                      style={inputStyle}
+                    />
+                  </Field>
+                  <Field label="Kaç Adet / Şişe Var">
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="Örn: 5"
+                      value={newProduct.packageCount}
+                      onChange={(e) => setNewProduct({ ...newProduct, packageCount: e.target.value })}
+                      style={inputStyle}
+                    />
+                  </Field>
+                </div>
+                {newProductComputedTotal !== null && (
+                  <div style={{ fontSize: 12, color: T.purple, fontWeight: 600 }}>
+                    Toplam stok: {newProductComputedTotal} {UNIT_LABELS[newProduct.unit]}
+                  </div>
+                )}
+              </>
+            ) : (
+              <Field label="Başlangıç Stoku">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  placeholder="Örn: 10 veya 2.5"
+                  value={newProduct.stockQuantity}
+                  onChange={(e) => setNewProduct({ ...newProduct, stockQuantity: e.target.value })}
+                  style={inputStyle}
+                />
+              </Field>
+            )}
+
+            <Field label="Kritik Stok Uyarısı (toplam üzerinden)">
+              <input type="number" min="0" step="0.001" placeholder="Örn: 2" value={newProduct.minStockAlert} onChange={(e) => setNewProduct({ ...newProduct, minStockAlert: e.target.value })} style={inputStyle} />
+            </Field>
+
+            <button type="submit" disabled={saving} style={{ ...btnStyle(T.purpleDark, T.gold, saving), marginTop: 4, padding: '13px', fontSize: 14 }}>
+              {saving ? 'Kaydediliyor...' : 'Ürünü Kaydet'}
+            </button>
+          </div>
+        </form>
+      </Drawer>
 
       {/* DÜZENLEME MODALI */}
       {editProduct && (
@@ -673,26 +676,33 @@ function ModalShell({ onClose, children }) {
   );
 }
 
-const panelStyle = {
-  background: T.cream,
-  border: '1px solid rgba(90,58,112,0.14)',
-  borderRadius: 18,
-  padding: 24,
-  boxShadow: '0 4px 24px rgba(36,21,47,0.18)',
+const thStyle = {
+  padding: '14px 18px',
+  fontSize: 11.5,
+  fontWeight: 700,
+  color: T.purple,
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
 };
 
-const productCardStyle = {
-  background: T.cream,
-  border: '1px solid rgba(90,58,112,0.16)',
-  borderRadius: 14,
-  padding: '16px 18px',
-  display: 'flex',
-  flexWrap: 'wrap',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 14,
-  boxShadow: '0 1px 6px rgba(36,21,47,0.06)',
+const tdStyle = {
+  padding: '14px 18px',
+  verticalAlign: 'middle',
+  color: T.bg,
 };
+
+function ghostBtnStyle(color) {
+  return {
+    background: 'transparent',
+    border: `1px solid ${color}`,
+    color,
+    borderRadius: 7,
+    padding: '6px 11px',
+    fontWeight: 700,
+    fontSize: 11.5,
+    cursor: 'pointer',
+  };
+}
 
 const inputStyle = {
   width: '100%',

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { notFound } from 'next/navigation';
 import * as pdfjsLib from 'pdfjs-dist';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
@@ -12,6 +13,12 @@ const FILES = [
 ];
 
 export default function CoordPicker() {
+  // Sadece PDF koordinat kalibrasyonu için kullanılan bir geliştirici aracı;
+  // production'da tamamen kapalı tutulur.
+  if (process.env.NODE_ENV === 'production') {
+    notFound();
+  }
+
   const [file, setFile] = useState(FILES[0]);
   const [pageNum, setPageNum] = useState(1);
   const [numPages, setNumPages] = useState(1);

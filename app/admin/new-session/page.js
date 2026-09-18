@@ -3,17 +3,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import QRCode from 'qrcode';
 import PhoneInput from '@/components/PhoneInput';
+import { ML_QUANTITY_OPTIONS, UNIT_LABELS } from '@/lib/quantity-options';
+import { T } from '@/lib/theme';
 
 const TEMPLATES = [
   { file: 'dolgu_uygulama_onam_fromu.pdf', label: 'Dolgu Uygulaması Onam Formu' },
   { file: 'botilinum_toksin_uygulamalari_onam_formu.pdf', label: 'Botoks (Botulinum Toksin) Onam Formu' },
   { file: 'mezoterapi_onam_formu.pdf', label: 'Mezoterapi Onam Formu' },
 ];
-
-const ML_QUANTITY_OPTIONS = Array.from({ length: 20 }, (_, i) => ((i + 1) * 0.5).toFixed(1));
-// → ['0.5','1.0','1.5',...,'9.5','10.0']
-
-const UNIT_LABELS = { ML: 'ml', UNIT: 'Ünite', PIECE: 'Adet' };
 
 export default function NewSessionPage() {
   const [patients, setPatients] = useState([]);
@@ -253,10 +250,10 @@ export default function NewSessionPage() {
   }
 
   return (
-    <div style={{ maxWidth: 560, margin: '0 auto', color: '#0f172a' }}>
-      <div style={{ marginBottom: 20, borderBottom: '1px solid #e2e8f0', paddingBottom: 16 }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ONAM SÜRECİ</span>
-        <h1 style={{ margin: '2px 0 0 0', fontSize: 22, fontWeight: 800 }}>Yeni İşlem / Onam Formu Gönder</h1>
+    <div style={{ maxWidth: 960, margin: '0 auto', color: '#0f172a' }}>
+      <div style={{ marginBottom: 20, borderBottom: `1px solid ${T.purple}30`, paddingBottom: 16 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: T.purpleDark, textTransform: 'uppercase', letterSpacing: '0.05em' }}>ONAM SÜRECİ</span>
+        <h1 style={{ margin: '2px 0 0 0', fontSize: 22, fontWeight: 800, color: T.bg }}>Yeni İşlem / Onam Formu Gönder</h1>
       </div>
 
       {errorMsg && (
@@ -265,8 +262,10 @@ export default function NewSessionPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 12, padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <form onSubmit={handleSubmit} className="new-session-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
 
+        {/* SOL SÜTUN: HASTA & İŞLEM SEÇİMİ */}
+        <div style={{ background: T.white, border: `1px solid ${T.purple}30`, borderRadius: 16, padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ display: 'flex', gap: 4, background: '#f1f5f9', padding: 3, borderRadius: 6 }}>
           <button type="button" onClick={() => { setIsNewPatientMode(false); }} style={{ flex: 1, padding: '6px', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: !isNewPatientMode ? '#ffffff' : 'transparent', color: !isNewPatientMode ? '#0f172a' : '#64748b' }}>
             Kayıtlı Hasta
@@ -368,9 +367,22 @@ export default function NewSessionPage() {
           <input value={form.productBrand} onChange={(e) => setForm({ ...form, productBrand: e.target.value })} placeholder="Aşağıda envanterden ürün seçebilirsiniz" style={{ width: '100%', padding: '9px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box' }} />
         </div>
 
-        {/* ─── ÜRÜN KULLANIMI (aratmalı + miktar) ─── */}
-        <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: 12, background: '#f8fafc' }}>
-          <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 8 }}>Kullanılan Ürün(ler)</label>
+        <div>
+          <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>Onam Formu Seçimi</label>
+          <select value={form.templateFile} onChange={(e) => setForm({ ...form, templateFile: e.target.value })} style={{ width: '100%', padding: '9px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }}>
+            {TEMPLATES.map((t) => (
+              <option key={t.file} value={t.file}>{t.label}</option>
+            ))}
+          </select>
+        </div>
+        </div>
+
+        {/* SAĞ SÜTUN: ÜRÜN / FİYAT HESAPLAMA */}
+        <div style={{ background: T.white, border: `1px solid ${T.purple}30`, borderRadius: 16, padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+        {/* ─── ÜRÜN KULLANIMI (mini sepet) ─── */}
+        <div style={{ border: `1px solid ${T.purple}30`, borderRadius: 12, padding: 14, background: T.cream }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: T.purpleDark, display: 'block', marginBottom: 8 }}>Kullanılan Ürün(ler) — Sepet</label>
 
           {productUsages.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
@@ -452,15 +464,6 @@ export default function NewSessionPage() {
           </div>
         </div>
 
-        <div>
-          <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>Onam Formu Seçimi</label>
-          <select value={form.templateFile} onChange={(e) => setForm({ ...form, templateFile: e.target.value })} style={{ width: '100%', padding: '9px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13 }}>
-            {TEMPLATES.map((t) => (
-              <option key={t.file} value={t.file}>{t.label}</option>
-            ))}
-          </select>
-        </div>
-
         <button
           type="submit"
           disabled={submitting}
@@ -468,7 +471,16 @@ export default function NewSessionPage() {
         >
           {submitting ? 'Oluşturuluyor...' : 'İmzaya Gönder (QR Oluştur)'}
         </button>
+        </div>
       </form>
+
+      <style jsx>{`
+        @media (max-width: 800px) {
+          .new-session-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

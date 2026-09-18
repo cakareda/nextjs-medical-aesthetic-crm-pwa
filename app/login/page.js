@@ -3,27 +3,13 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Inter } from 'next/font/google';
+import { T } from '@/lib/theme';
 
 const inter = Inter({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-inter',
 });
-
-// NOVANTİS marka renk paleti
-const T = {
-  bgMurjum: '#24152F',
-  ametist: '#5A3A70',
-  altin: '#C9A45C',
-  krem: '#F5F0E8',
-  beyaz: '#FFFFFF',
-  btnMurjum: '#4A2859',
-  basari: '#789681',
-  hata: '#E8C9D1',
-  textDark: '#24152F',
-  textSoft: '#5A3A70',
-  textMuted: '#766A7D',
-};
 
 const sans = 'var(--font-inter), sans-serif';
 
@@ -80,13 +66,13 @@ export default function LoginPage() {
     width: '100%',
     padding: '12px 14px',
     borderRadius: 6,
-    border: `1px solid ${T.ametist}40`,
+    border: `1px solid ${T.purple}40`,
     fontSize: 14,
     boxSizing: 'border-box',
     outline: 'none',
     fontFamily: sans,
     color: T.textDark,
-    background: T.beyaz,
+    background: T.white,
     transition: 'border-color 160ms ease, box-shadow 160ms ease',
   };
 
@@ -101,7 +87,7 @@ export default function LoginPage() {
         padding: 24,
         boxSizing: 'border-box',
         fontFamily: sans,
-        background: T.bgMurjum,
+        background: T.bg,
         position: 'relative',
         overflow: 'hidden',
       }}
@@ -114,7 +100,7 @@ export default function LoginPage() {
           width: 420,
           height: 420,
           borderRadius: '50%',
-          background: T.ametist,
+          background: T.purple,
           opacity: 0.22,
           filter: 'blur(80px)',
           top: '-180px',
@@ -129,7 +115,7 @@ export default function LoginPage() {
           width: 320,
           height: 320,
           borderRadius: '50%',
-          background: T.altin,
+          background: T.gold,
           opacity: 0.08,
           filter: 'blur(90px)',
           bottom: '-160px',
@@ -144,7 +130,7 @@ export default function LoginPage() {
           zIndex: 1,
           width: '100%',
           maxWidth: 420,
-          background: T.krem,
+          background: T.cream,
           borderRadius: 10,
           boxShadow: '0 24px 70px rgba(0, 0, 0, 0.28)',
           overflow: 'hidden',
@@ -153,10 +139,10 @@ export default function LoginPage() {
         {/* Üst marka alanı */}
         <div
           style={{
-            background: T.bgMurjum,
+            background: T.bg,
             padding: '34px 32px 30px',
             textAlign: 'center',
-            borderBottom: `1px solid ${T.altin}55`,
+            borderBottom: `1px solid ${T.gold}55`,
           }}
         >
           <div
@@ -166,39 +152,7 @@ export default function LoginPage() {
               alignItems: 'center',
             }}
           >
-            <div
-              style={{
-                color: T.krem,
-                fontSize: 30,
-                lineHeight: 1,
-                fontWeight: 700,
-                letterSpacing: '0.16em',
-                marginLeft: '0.16em',
-              }}
-            >
-              NOVANTİS
-            </div>
-
-            <div
-              style={{
-                width: 48,
-                height: 1,
-                background: T.altin,
-                margin: '12px 0 9px',
-              }}
-            />
-
-            <div
-              style={{
-                color: T.altin,
-                fontSize: 10,
-                fontWeight: 600,
-                letterSpacing: '0.22em',
-                marginLeft: '0.22em',
-              }}
-            >
-              SAĞLIK & GÜZELLİK
-            </div>
+            <img src="/logo-light.png" alt="Novantis" style={{ height: 84, width: 'auto', display: 'block' }} />
           </div>
 
           <p
@@ -223,8 +177,8 @@ export default function LoginPage() {
             <div
               role="alert"
               style={{
-                background: T.hata,
-                borderLeft: `3px solid ${T.hata}`,
+                background: T.error,
+                borderLeft: `3px solid ${T.error}`,
                 color: T.textDark,
                 padding: '11px 13px',
                 borderRadius: 5,
@@ -276,11 +230,11 @@ export default function LoginPage() {
                   opacity: loading ? 0.75 : 1,
                 }}
                 onFocus={(e) => {
-                  e.currentTarget.style.borderColor = T.altin;
-                  e.currentTarget.style.boxShadow = `0 0 0 3px ${T.altin}18`;
+                  e.currentTarget.style.borderColor = T.gold;
+                  e.currentTarget.style.boxShadow = `0 0 0 3px ${T.gold}18`;
                 }}
                 onBlur={(e) => {
-                  e.currentTarget.style.borderColor = `${T.ametist}40`;
+                  e.currentTarget.style.borderColor = `${T.purple}40`;
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               />
@@ -316,11 +270,11 @@ export default function LoginPage() {
                   opacity: loading ? 0.75 : 1,
                 }}
                 onFocus={(e) => {
-                  e.currentTarget.style.borderColor = T.altin;
-                  e.currentTarget.style.boxShadow = `0 0 0 3px ${T.altin}18`;
+                  e.currentTarget.style.borderColor = T.gold;
+                  e.currentTarget.style.boxShadow = `0 0 0 3px ${T.gold}18`;
                 }}
                 onBlur={(e) => {
-                  e.currentTarget.style.borderColor = `${T.ametist}40`;
+                  e.currentTarget.style.borderColor = `${T.purple}40`;
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               />
@@ -336,8 +290,8 @@ export default function LoginPage() {
                 border: 'none',
                 borderRadius: 6,
                 padding: '13px 16px',
-                background: loading ? T.ametist : T.btnMurjum,
-                color: T.beyaz,
+                background: loading ? T.purple : T.purpleDark,
+                color: T.white,
                 fontFamily: sans,
                 fontSize: 14,
                 fontWeight: 700,
@@ -348,12 +302,12 @@ export default function LoginPage() {
               }}
               onMouseEnter={(e) => {
                 if (!loading) {
-                  e.currentTarget.style.background = T.bgMurjum;
+                  e.currentTarget.style.background = T.bg;
                 }
               }}
               onMouseLeave={(e) => {
                 if (!loading) {
-                  e.currentTarget.style.background = T.btnMurjum;
+                  e.currentTarget.style.background = T.purpleDark;
                 }
               }}
               onMouseDown={(e) => {
@@ -374,7 +328,7 @@ export default function LoginPage() {
             style={{
               marginTop: 28,
               paddingTop: 18,
-              borderTop: `1px solid ${T.ametist}20`,
+              borderTop: `1px solid ${T.purple}20`,
               textAlign: 'center',
             }}
           >

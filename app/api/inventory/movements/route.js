@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 
+// ADJUSTMENT burada listelenmiyor: yönü (artış/azalış) belirsiz olduğundan
+// bu endpoint'ten oluşturulamaz. Manuel düzeltme, ürünün mutlak stockQuantity
+// değerini değiştiren /api/inventory/products PATCH üzerinden yapılır.
 const ALLOWED_TYPES = [
   'IN',
   'OUT',
-  'ADJUSTMENT',
   'RETURN',
 ];
 
@@ -305,14 +307,12 @@ export async function POST(request) {
           /*
            * IN
            * RETURN
-           * ADJUSTMENT
            *
-           * Bu üçü mevcut stoğu artırır.
+           * Bu ikisi mevcut stoğu artırır.
            */
           if (
             type === 'IN' ||
-            type === 'RETURN' ||
-            type === 'ADJUSTMENT'
+            type === 'RETURN'
           ) {
             await applyStockIncrease(
               tx,
@@ -380,6 +380,10 @@ export async function POST(request) {
             product: updatedProduct,
             movement,
           };
+        },
+        {
+          maxWait: 10000,
+          timeout: 10000,
         }
       );
 

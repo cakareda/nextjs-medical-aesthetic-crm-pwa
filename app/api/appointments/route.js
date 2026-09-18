@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getColorIdForType, getColorIdForStatus } from '@/lib/appointment-colors';
+
+const VALID_STATUSES = ['PENDING', 'ATTENDED', 'NO_SHOW', 'CANCELED'];
 
 export async function GET() {
   try {
@@ -31,13 +34,16 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Geçersiz tarih formatı' }, { status: 400 });
     }
 
+    const appointmentType = type || 'TOUCH_UP';
+
     const appointment = await prisma.appointment.create({
       data: {
         patientId,
         title,
         date: parsedDate,
-        type: type || 'TOUCH_UP',
+        type: appointmentType,
         notes,
+        colorId: getColorIdForType(appointmentType),
       },
     });
 
@@ -51,13 +57,38 @@ export async function PATCH(request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    const { status } = await request.json();
+    const { status, date } = await request.json();
 
     if (!id) return NextResponse.json({ error: 'Randevu ID gerekli' }, { status: 400 });
 
+    const data = {};
+
+    if (status !== undefined) {
+      if (!VALID_STATUSES.includes(status)) {
+        return NextResponse.json({ error: 'Geçersiz randevu durumu' }, { status: 400 });
+      }
+      data.status = status;
+
+      // Geldi / gelmedi durumunda renk otomatik güncellenir (bkz. lib/appointment-colors).
+      const statusColorId = getColorIdForStatus(status);
+      if (statusColorId) data.colorId = statusColorId;
+    }
+
+    if (date !== undefined) {
+      const parsedDate = new Date(date);
+      if (isNaN(parsedDate.getTime())) {
+        return NextResponse.json({ error: 'Geçersiz tarih formatı' }, { status: 400 });
+      }
+      data.date = parsedDate;
+    }
+
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json({ error: 'Güncellenecek alan bulunamadı' }, { status: 400 });
+    }
+
     const updated = await prisma.appointment.update({
       where: { id },
-      data: { status },
+      data,
     });
 
     return NextResponse.json(updated);

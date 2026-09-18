@@ -600,6 +600,10 @@ export async function PATCH(request, context) {
           });
 
         return updated;
+      },
+      {
+        maxWait: 10000,
+        timeout: 10000,
       }
     );
 
@@ -770,5 +774,61 @@ export async function PATCH(request, context) {
         status: 500,
       }
     );
+  }
+}
+
+export async function DELETE(request, context) {
+  try {
+    const params = await context.params;
+    const id = params?.id;
+
+    if (!id) {
+      return NextResponse.json({ error: 'Geçersiz işlem ID' }, { status: 400 });
+    }
+
+    await prisma.$transaction(
+      async (tx) => {
+        const treatment = await tx.treatment.findUnique({
+          where: { id },
+          include: { productUsages: true },
+        });
+
+        if (!treatment) {
+          throw new Error('TREATMENT_NOT_FOUND');
+        }
+
+        // Tedavi silinirken kullanılan ürünler stoğa geri eklenir.
+        for (const usage of treatment.productUsages) {
+          await applyStockReturn(tx, usage.productId, usage.quantity);
+
+          await createStockMovement(
+            tx,
+            usage.productId,
+            'RETURN',
+            usage.quantity,
+            treatment.id,
+            `Tedavi silindi: ${treatment.treatmentType}`
+          );
+        }
+
+        await tx.treatment.delete({ where: { id } });
+      },
+      {
+        maxWait: 10000,
+        timeout: 10000,
+      }
+    );
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/treatments/[id] error:', err);
+
+    const errorCode = err instanceof Error ? err.message : '';
+
+    if (errorCode === 'TREATMENT_NOT_FOUND') {
+      return NextResponse.json({ error: 'Tedavi bulunamadı' }, { status: 404 });
+    }
+
+    return NextResponse.json({ error: 'Tedavi silinirken bir hata oluştu' }, { status: 500 });
   }
 }

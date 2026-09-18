@@ -115,23 +115,6 @@ async function applyStockOut(tx, productId, quantity) {
   }
 }
 
-async function applyStockReturn(tx, productId, quantity) {
-  const result = await tx.product.updateMany({
-    where: {
-      id: productId,
-    },
-    data: {
-      stockQuantity: {
-        increment: quantity,
-      },
-    },
-  });
-
-  if (result.count !== 1) {
-    throw new Error('Stok iadesi sırasında ürün bulunamadı.');
-  }
-}
-
 async function createStockMovement(
   tx,
   {
@@ -422,6 +405,9 @@ export async function POST(request) {
       }
 
       return treatment;
+    }, {
+      maxWait: 10000,
+      timeout: 10000,
     });
 
     const createdTreatment = await prisma.treatment.findUnique({
@@ -483,7 +469,6 @@ export async function POST(request) {
 
     const isClientError =
       knownErrors.includes(message) ||
-      message.startsWith('Elasty') ||
       message.includes('için yeterli stok bulunmuyor');
 
     return Response.json(
@@ -494,89 +479,6 @@ export async function POST(request) {
       },
       {
         status: isClientError ? 400 : 500,
-      }
-    );
-  }
-}
-
-export async function DELETE(request) {
-  try {
-    const { searchParams } = new URL(request.url);
-
-    const id = searchParams.get('id');
-
-    if (!id) {
-      return Response.json(
-        {
-          error: 'Tedavi ID zorunludur.',
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    await prisma.$transaction(async (tx) => {
-      const treatment = await tx.treatment.findUnique({
-        where: {
-          id,
-        },
-        include: {
-          productUsages: true,
-        },
-      });
-
-      if (!treatment) {
-        throw new Error('Tedavi bulunamadı.');
-      }
-
-      /*
-       * Tedavi silinirken kullanılan ürünler stoğa geri eklenir.
-       * quantity doğrudan Prisma.Decimal olarak kullanılıyor.
-       */
-      for (const usage of treatment.productUsages) {
-        await applyStockReturn(
-          tx,
-          usage.productId,
-          usage.quantity
-        );
-
-        await createStockMovement(tx, {
-          productId: usage.productId,
-          type: 'RETURN',
-          quantity: usage.quantity,
-          treatmentId: treatment.id,
-          note: `Tedavi silindi: ${treatment.treatmentType}`,
-        });
-      }
-
-      await tx.treatment.delete({
-        where: {
-          id,
-        },
-      });
-    });
-
-    return Response.json({
-      success: true,
-    });
-  } catch (error) {
-    console.error('DELETE /api/treatments error:', error);
-
-    const message =
-      error instanceof Error
-        ? error.message
-        : 'Tedavi silinirken bir hata oluştu.';
-
-    return Response.json(
-      {
-        error:
-          message === 'Tedavi bulunamadı.'
-            ? message
-            : 'Tedavi silinirken bir hata oluştu.',
-      },
-      {
-        status: message === 'Tedavi bulunamadı.' ? 404 : 500,
       }
     );
   }

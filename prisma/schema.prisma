@@ -133,7 +133,7 @@ model Appointment {
   googleEventId String? @unique
   colorId       String?
 
-  status String @default("PENDING") // PENDING, ATTENDED, NO_SHOW
+  status String @default("PENDING") // PENDING, ATTENDED, NO_SHOW, CANCELED
   type   String @default("INITIAL") // INITIAL, TOUCH_UP, ROUTINE
 
   notes     String?

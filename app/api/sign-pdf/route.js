@@ -5,13 +5,14 @@ import fs from 'fs';
 import path from 'path';
 import { prisma } from '@/lib/prisma';
 import { FORM_CONFIGS } from '@/lib/pdf-config';
+import { uploadToStorage } from '@/lib/storage';
 
 function formatDateTR(isoDate) {
   if (!isoDate) return '';
   const parts = isoDate.split('-');
   if (parts.length !== 3) return isoDate;
   const [y, m, d] = parts;
-  return `\({d}.\){m}.${y}`;
+  return `${d}.${m}.${y}`;
 }
 
 async function drawSignature(pdfDoc, page, base64, box) {
@@ -114,13 +115,8 @@ export async function POST(request) {
     }
 
     const pdfBytes = await pdfDoc.save();
-    const signedDir = path.join(process.cwd(), 'public', 'signed');
-    if (!fs.existsSync(signedDir)) fs.mkdirSync(signedDir, { recursive: true });
-
     const fileName = `${sessionId}.pdf`;
-    fs.writeFileSync(path.join(signedDir, fileName), pdfBytes);
-
-    const relativeUrl = `/signed/${fileName}`;
+    const relativeUrl = await uploadToStorage(`signed/${fileName}`, Buffer.from(pdfBytes), 'application/pdf');
 
     await prisma.signSession.update({
       where: { id: sessionId },

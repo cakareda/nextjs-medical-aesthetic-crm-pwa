@@ -3,24 +3,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-
-const T = {
-  bg: '#24152F',
-  purple: '#5A3A70',
-  purpleDark: '#4A2859',
-  gold: '#C9A45C',
-  cream: '#FFF0E8',
-  white: '#FFFFFF',
-  success: '#789681',
-  error: '#E8C9D1',
-};
-
-const UNIT_LABELS = { ML: 'ml', UNIT: 'ünite', PIECE: 'adet' };
-
-function getQuantityOptions(unit) {
-  if (unit === 'ML') return Array.from({ length: 10 }, (_, i) => (0.5 * (i + 1)).toFixed(1));
-  return Array.from({ length: 10 }, (_, i) => String(i + 1));
-}
+import { T } from '@/lib/theme';
+import { UNIT_LABELS, getQuantityOptions } from '@/lib/quantity-options';
 
 function formatDateTime(dateStr) {
   if (!dateStr) return '—';
@@ -56,8 +40,9 @@ export default function PatientDetailPage() {
   const [treatmentForm, setTreatmentForm] = useState({
     treatmentType: '', applicationArea: '', price: '', paidAmount: '', notes: '',
   });
-  const [selectedProductId, setSelectedProductId] = useState('');
-  const [selectedQuantity, setSelectedQuantity] = useState('1');
+  const [productUsages, setProductUsages] = useState([]); // {productId, name, unit, quantity}
+  const [pendingProduct, setPendingProduct] = useState(null);
+  const [pendingQuantity, setPendingQuantity] = useState('1');
   const [productSearch, setProductSearch] = useState('');
   const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
   const productSearchRef = useRef(null);
@@ -143,9 +128,42 @@ export default function PatientDetailPage() {
 
   const resetTreatmentForm = () => {
     setTreatmentForm({ treatmentType: '', applicationArea: '', price: '', paidAmount: '', notes: '' });
-    setSelectedProductId('');
-    setSelectedQuantity('1');
+    setProductUsages([]);
+    setPendingProduct(null);
+    setPendingQuantity('1');
     setProductSearch('');
+  };
+
+  const handleSelectProduct = (p) => {
+    setPendingProduct(p);
+    setProductSearch(p.name);
+    setIsProductDropdownOpen(false);
+    setPendingQuantity(getQuantityOptions(p.unit)[0]);
+  };
+
+  const handleAddProductUsage = () => {
+    if (!pendingProduct) {
+      alert('Lütfen önce bir ürün seçin.');
+      return;
+    }
+    const qty = Number(pendingQuantity);
+    if (!Number.isFinite(qty) || qty <= 0) {
+      alert('Geçerli bir miktar girin.');
+      return;
+    }
+
+    setProductUsages((prev) => [
+      ...prev,
+      { productId: pendingProduct.id, name: pendingProduct.name, unit: pendingProduct.unit, quantity: qty },
+    ]);
+
+    setPendingProduct(null);
+    setProductSearch('');
+    setPendingQuantity('1');
+  };
+
+  const handleRemoveProductUsage = (index) => {
+    setProductUsages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleCreateTreatment = async () => {
@@ -153,10 +171,6 @@ export default function PatientDetailPage() {
 
     setSavingTreatment(true);
     try {
-      const productUsages = selectedProductId
-        ? [{ productId: selectedProductId, quantity: selectedQuantity }]
-        : [];
-
       const res = await fetch('/api/treatments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -167,7 +181,7 @@ export default function PatientDetailPage() {
           notes: treatmentForm.notes,
           price: treatmentForm.price,
           paidAmount: treatmentForm.paidAmount,
-          productUsages,
+          productUsages: productUsages.map((u) => ({ productId: u.productId, quantity: u.quantity })),
         }),
       });
       const data = await res.json();
@@ -186,7 +200,7 @@ export default function PatientDetailPage() {
   const handleDeleteTreatment = async (treatmentId) => {
     if (!confirm('Bu tedaviyi silmek istediğinize emin misiniz? Kullanılan stok otomatik iade edilecek.')) return;
     try {
-      const res = await fetch(`/api/treatments?id=${treatmentId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/treatments/${treatmentId}`, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) return alert(data.error || 'Silinemedi');
       fetchAll();
@@ -251,11 +265,10 @@ export default function PatientDetailPage() {
   };
 
   const filteredProducts = products.filter((p) => p.name.toLowerCase().includes(productSearch.toLowerCase()));
-  const selectedProduct = products.find((p) => p.id === selectedProductId);
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: T.bg, color: T.white, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif' }}>
+      <div style={{ minHeight: '60vh', color: T.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif' }}>
         Hasta verileri yükleniyor...
       </div>
     );
@@ -263,9 +276,9 @@ export default function PatientDetailPage() {
 
   if (errorMsg || !patient) {
     return (
-      <div style={{ minHeight: '100vh', background: T.bg, color: T.error, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif', gap: 12 }}>
+      <div style={{ minHeight: '60vh', color: T.errorText, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif', gap: 12 }}>
         <div>{errorMsg || 'Hasta bulunamadı.'}</div>
-        <Link href="/admin/patients" style={{ color: T.gold }}>Hasta listesine dön</Link>
+        <Link href="/admin/patients" style={{ color: T.purpleDark }}>Hasta listesine dön</Link>
       </div>
     );
   }
@@ -277,12 +290,12 @@ export default function PatientDetailPage() {
   const pendingTouchUps = patient.treatments?.filter((t) => t.touchUpStatus === 'PENDING') || [];
 
   return (
-    <main style={{ minHeight: '100vh', background: T.bg, color: T.white, padding: '32px 20px 48px', fontFamily: 'sans-serif' }}>
+    <main style={{ color: T.bg, fontFamily: 'sans-serif' }}>
       <div style={{ maxWidth: 1060, margin: '0 auto' }}>
 
         {/* ÜST NAV */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-          <Link href="/admin/patients" style={{ color: T.gold, textDecoration: 'none', fontSize: 14, fontWeight: 700 }}>
+          <Link href="/admin/patients" style={{ color: T.purpleDark, textDecoration: 'none', fontSize: 14, fontWeight: 700 }}>
             ← Hasta Listesine Dön
           </Link>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -425,28 +438,32 @@ export default function PatientDetailPage() {
               </div>
             </div>
 
-            {/* ÜRÜN SEÇİMİ */}
-            <div style={{ position: 'relative', marginBottom: 12 }} ref={productSearchRef}>
-              <label style={labelStyle}>Ürün (Stoktan Seç — opsiyonel)</label>
-              {selectedProductId ? (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: 6, marginTop: 3 }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0369A1' }}>{selectedProduct?.name}</div>
-                    <div style={{ fontSize: 11, color: '#0284C7' }}>
-                      Kalan: {selectedProduct ? Number(selectedProduct.stockQuantity).toFixed(2) : ''} {selectedProduct ? UNIT_LABELS[selectedProduct.unit] : ''}
+            {/* ÜRÜN SEÇİMİ (birden fazla ürün eklenebilir) */}
+            <div style={{ marginBottom: 12 }}>
+              <label style={labelStyle}>Kullanılan Ürün(ler) — opsiyonel</label>
+
+              {productUsages.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6, marginBottom: 10 }}>
+                  {productUsages.map((u, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: 6, padding: '6px 10px' }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#0369A1' }}>
+                        {u.name} — {u.quantity} {UNIT_LABELS[u.unit] || u.unit}
+                      </span>
+                      <button type="button" onClick={() => handleRemoveProductUsage(idx)} style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                        Kaldır
+                      </button>
                     </div>
-                  </div>
-                  <button type="button" onClick={() => setSelectedProductId('')} style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                    Değiştir
-                  </button>
+                  ))}
                 </div>
-              ) : (
-                <>
+              )}
+
+              <div style={{ position: 'relative', display: 'flex', gap: 8, flexWrap: 'wrap' }} ref={productSearchRef}>
+                <div style={{ position: 'relative', flex: '1 1 200px' }}>
                   <input
                     type="text"
                     placeholder="Ürün ara..."
                     value={productSearch}
-                    onChange={(e) => { setProductSearch(e.target.value); setIsProductDropdownOpen(true); }}
+                    onChange={(e) => { setProductSearch(e.target.value); setPendingProduct(null); setIsProductDropdownOpen(true); }}
                     onFocus={() => setIsProductDropdownOpen(true)}
                     style={inputStyle}
                   />
@@ -458,12 +475,7 @@ export default function PatientDetailPage() {
                         filteredProducts.map((p) => (
                           <div
                             key={p.id}
-                            onClick={() => {
-                              setSelectedProductId(p.id);
-                              setSelectedQuantity(getQuantityOptions(p.unit)[0]);
-                              setProductSearch('');
-                              setIsProductDropdownOpen(false);
-                            }}
+                            onClick={() => handleSelectProduct(p)}
                             style={{ padding: '8px 12px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', fontSize: 12, display: 'flex', justifyContent: 'space-between' }}
                           >
                             <span style={{ fontWeight: 600 }}>{p.name}</span>
@@ -473,20 +485,21 @@ export default function PatientDetailPage() {
                       )}
                     </div>
                   )}
-                </>
-              )}
-            </div>
+                </div>
 
-            {selectedProductId && selectedProduct && (
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ ...labelStyle, color: '#0284C7' }}>Kullanılan Miktar</label>
-                <select value={selectedQuantity} onChange={(e) => setSelectedQuantity(e.target.value)} style={{ ...inputStyle, border: '1px solid #0284C7' }}>
-                  {getQuantityOptions(selectedProduct.unit).map((q) => (
-                    <option key={q} value={q}>{q} {UNIT_LABELS[selectedProduct.unit]}</option>
-                  ))}
-                </select>
+                {pendingProduct && (
+                  <select value={pendingQuantity} onChange={(e) => setPendingQuantity(e.target.value)} style={{ ...inputStyle, width: 'auto', border: '1px solid #0284C7' }}>
+                    {getQuantityOptions(pendingProduct.unit).map((q) => (
+                      <option key={q} value={q}>{q} {UNIT_LABELS[pendingProduct.unit]}</option>
+                    ))}
+                  </select>
+                )}
+
+                <button type="button" onClick={handleAddProductUsage} style={btnStyle(T.purpleDark, T.gold)}>
+                  Ekle
+                </button>
               </div>
-            )}
+            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
               <div>
@@ -604,29 +617,29 @@ export default function PatientDetailPage() {
 }
 
 const cardStyle = {
-  background: '#FFF0E8',
-  border: '1px solid #5A3A70',
+  background: T.cream,
+  border: `1px solid ${T.purple}`,
   borderRadius: 14,
   padding: 22,
-  color: '#24152F',
+  color: T.bg,
 };
 
 const inputStyle = {
   width: '100%',
   padding: '9px',
   borderRadius: 6,
-  border: '1px solid #5A3A70',
+  border: `1px solid ${T.purple}`,
   marginTop: 3,
   fontSize: 13,
   boxSizing: 'border-box',
-  background: '#fff',
-  color: '#24152F',
+  background: T.white,
+  color: T.bg,
 };
 
 const labelStyle = {
   fontSize: 11,
   fontWeight: 700,
-  color: '#24152F',
+  color: T.bg,
   display: 'block',
   marginBottom: 3,
 };

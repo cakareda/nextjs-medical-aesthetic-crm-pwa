@@ -2,26 +2,13 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-
-const T = {
-  bg: '#24152F',
-  purple: '#5A3A70',
-  purpleDark: '#4A2859',
-  gold: '#C9A45C',
-  cream: '#FFF0E8',
-  white: '#FFFFFF',
-  success: '#789681',
-  error: '#E8C9D1',
-};
+import { T } from '@/lib/theme';
 
 const IconSearch = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
 );
 const IconChevronRight = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-);
-const IconUsers = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path><path d="M21 21v-2a4 4 0 0 0-3-3.85"></path><path d="M8 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"></path><path d="M2 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"></path></svg>
 );
 const IconPhone = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
@@ -66,45 +53,39 @@ export default function PatientsPage() {
   }, [query, fetchPatients]);
 
   return (
-    <main style={{ minHeight: '100vh', background: T.bg, color: T.white, padding: '32px 20px 48px', fontFamily: 'sans-serif' }}>
-      <div style={{ maxWidth: 1180, margin: '0 auto' }}>
+    <main style={{ maxWidth: 1180, margin: '0 auto', color: T.bg, fontFamily: 'sans-serif' }}>
+      <div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 28, flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ color: T.gold, fontSize: 13, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
-              Novantis
-            </div>
-            <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700 }}>Hasta Kayıtları</h1>
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ color: T.purpleDark, fontSize: 13, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+            Novantis
           </div>
-
-          <Link
-            href="/admin/new-session"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: T.gold, color: T.bg, padding: '10px 18px', borderRadius: 10, textDecoration: 'none', fontWeight: 700, fontSize: 14 }}
-          >
-            <IconUserPlus /> Yeni Onam Gönder
-          </Link>
+          <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700, color: T.bg }}>Hasta Kayıtları</h1>
         </div>
 
-        <section style={{ background: T.cream, borderRadius: 16, padding: 20, color: T.bg, boxShadow: '0 10px 30px rgba(0,0,0,0.14)' }}>
+        <section style={{ background: T.white, border: `1px solid ${T.purple}30`, borderRadius: 16, padding: 24, color: T.bg }}>
 
-          <div style={{ position: 'relative', marginBottom: 20 }}>
-            <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: T.purple }}>
-              <IconSearch />
+          <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flex: '1 1 320px' }}>
+              <div style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: T.purple }}>
+                <IconSearch />
+              </div>
+              <input
+                type="text"
+                placeholder="Hasta adı, soyadı veya telefon numarası ile ara..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                style={{ width: '100%', boxSizing: 'border-box', height: 46, padding: '0 14px 0 42px', border: `1px solid ${T.purple}`, borderRadius: 10, background: T.cream, color: T.bg, fontSize: 14, outline: 'none' }}
+              />
             </div>
-            <input
-              type="text"
-              placeholder="Hasta adı, soyadı veya telefon numarası ile ara..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              style={{ width: '100%', boxSizing: 'border-box', height: 46, padding: '0 14px 0 42px', border: `1px solid ${T.purple}`, borderRadius: 10, background: T.white, color: T.bg, fontSize: 15, outline: 'none' }}
-            />
+
+            <Link
+              href="/admin/new-session"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: T.gold, color: T.bg, padding: '0 18px', height: 46, borderRadius: 10, textDecoration: 'none', fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap' }}
+            >
+              <IconUserPlus /> Yeni Onam Gönder
+            </Link>
           </div>
-
-          {loading && (
-            <div style={{ padding: '28px 12px', textAlign: 'center', color: T.purple, fontSize: 14, fontWeight: 600 }}>
-              Yükleniyor...
-            </div>
-          )}
 
           {!loading && error && (
             <div style={{ padding: 16, borderRadius: 10, background: T.error, color: '#5A2030', fontSize: 14, fontWeight: 600, marginBottom: 12 }}>
@@ -112,24 +93,13 @@ export default function PatientsPage() {
             </div>
           )}
 
-          {!loading && !error && patients.length === 0 && (
-            <div style={{ background: T.white, border: `1px solid ${T.purple}`, borderRadius: 10, padding: 40, textAlign: 'center', color: T.purple }}>
-              <div style={{ display: 'inline-flex', padding: 12, background: '#F0E7F2', borderRadius: '50%', marginBottom: 12 }}>
-                <IconUsers />
-              </div>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>
-                {query ? 'Aramanıza uygun hasta kaydı bulunamadı.' : 'Henüz kayıtlı hasta bulunmuyor.'}
-              </p>
-            </div>
-          )}
-
-          {!loading && !error && patients.length > 0 && (
+          {!error && (
             <>
-              {/* MASAÜSTÜ TABLO */}
-              <div className="patients-desktop-table" style={{ width: '100%', background: T.white, border: `1px solid ${T.purple}`, borderRadius: 10, overflow: 'hidden' }}>
+              {/* MASAÜSTÜ TABLO — veri yokken de iskelet (başlıklar) görünür kalır */}
+              <div className="patients-desktop-table" style={{ width: '100%', background: T.white, border: `1px solid ${T.purple}30`, borderRadius: 10, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
                   <thead>
-                    <tr style={{ background: '#F0E7F2', borderBottom: `1px solid ${T.purple}`, color: T.purple, fontWeight: 700 }}>
+                    <tr style={{ background: T.cream, borderBottom: `1px solid ${T.purple}30`, color: T.purple, fontWeight: 700 }}>
                       <th style={{ padding: '12px 16px' }}>Ad Soyad</th>
                       <th style={{ padding: '12px 16px' }}>Telefon</th>
                       <th style={{ padding: '12px 16px' }}>Son İşlem</th>
@@ -139,7 +109,19 @@ export default function PatientsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {patients.map((p) => (
+                    {loading ? (
+                      <tr>
+                        <td colSpan={6} style={{ padding: '28px 16px', textAlign: 'center', color: T.purple, fontSize: 13, fontWeight: 600 }}>
+                          Yükleniyor...
+                        </td>
+                      </tr>
+                    ) : patients.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} style={{ padding: '28px 16px', textAlign: 'center', color: T.purple, fontSize: 13, fontWeight: 500 }}>
+                          {query ? 'Aramanıza uygun hasta kaydı bulunamadı.' : 'Henüz kayıtlı hasta bulunmuyor.'}
+                        </td>
+                      </tr>
+                    ) : patients.map((p) => (
                       <tr key={p.id} style={{ borderBottom: '1px solid #EEE5F0' }}>
                         <td style={{ padding: '14px 16px' }}>
                           <Link href={`/admin/patients/${p.id}`} style={{ color: T.purpleDark, textDecoration: 'none', fontWeight: 700 }}>
@@ -173,7 +155,13 @@ export default function PatientsPage() {
 
               {/* MOBİL KART */}
               <div className="patients-mobile-list">
-                {patients.map((p) => (
+                {loading ? (
+                  <div style={{ padding: '20px 0', textAlign: 'center', color: T.purple, fontSize: 13, fontWeight: 600 }}>Yükleniyor...</div>
+                ) : patients.length === 0 ? (
+                  <div style={{ padding: '20px 0', textAlign: 'center', color: T.purple, fontSize: 13 }}>
+                    {query ? 'Aramanıza uygun hasta kaydı bulunamadı.' : 'Henüz kayıtlı hasta bulunmuyor.'}
+                  </div>
+                ) : patients.map((p) => (
                   <Link
                     key={p.id}
                     href={`/admin/patients/${p.id}`}

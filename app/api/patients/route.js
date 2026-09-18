@@ -237,6 +237,8 @@ export async function POST(request) {
       },
       {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        maxWait: 10000,
+        timeout: 10000,
       }
     );
 

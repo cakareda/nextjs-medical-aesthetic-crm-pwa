@@ -3,23 +3,13 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Inter } from 'next/font/google';
+import { T } from '@/lib/theme';
 
 const inter = Inter({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-inter',
 });
-
-const T = {
-  bg: '#24152F',
-  purple: '#5A3A70',
-  purpleDark: '#4A2859',
-  gold: '#C9A45C',
-  cream: '#FFF0E8',
-  white: '#FFFFFF',
-  success: '#789681',
-  error: '#E8C9D1',
-};
 
 const sans = 'var(--font-inter), sans-serif';
 
@@ -121,11 +111,8 @@ export default function AdminLayout({ children }) {
       >
         <div>
           {/* LOGO & BAŞLIK */}
-          <div style={{ padding: '0 8px 20px 8px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: T.gold, letterSpacing: '0.06em', fontFamily: sans }}>
-              NOVANTİS
-            </h2>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: 500 }}>Sağlık & Güzellik</span>
+          <div style={{ padding: '0 8px 20px 8px', borderBottom: '1px solid rgba(255,255,255,0.1)', textAlign: 'center' }}>
+            <img src="/logo-light.png" alt="Novantis" style={{ height: 56, width: 'auto', margin: '0 auto', display: 'block' }} />
           </div>
 
           {/* MENÜ LİSTESİ */}
@@ -146,8 +133,8 @@ export default function AdminLayout({ children }) {
                     borderLeft: isActive ? `2px solid ${T.gold}` : '2px solid transparent',
                     fontSize: 13,
                     fontWeight: isActive ? 700 : 500,
-                    color: isActive ? T.gold : 'rgba(255,255,255,0.75)',
-                    background: isActive ? 'rgba(201,164,92,0.12)' : 'transparent',
+                    color: isActive ? T.gold : 'rgba(255,255,255,0.85)',
+                    background: isActive ? T.purpleDark : 'transparent',
                     textDecoration: 'none',
                     transition: 'all 0.15s ease',
                   }}
@@ -188,7 +175,7 @@ export default function AdminLayout({ children }) {
       </aside>
 
       {/* SAĞ ANA İÇERİK */}
-      <main style={{ flex: 1, padding: '32px 40px', overflowY: 'auto', background: T.bg }}>
+      <main style={{ flex: 1, padding: '32px 40px', overflowY: 'auto', background: T.cream }}>
         {children}
       </main>
 

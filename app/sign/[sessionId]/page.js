@@ -5,25 +5,13 @@ import { useParams } from 'next/navigation';
 import SignaturePad from 'signature_pad';
 import { CONSENT_QUESTIONS } from '@/lib/consent-questions';
 import { Inter } from 'next/font/google';
+import { T } from '@/lib/theme';
 
 const inter = Inter({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-inter',
 });
-
-const T = {
-  bgMurjum: '#24152F',
-  ametist: '#5A3A70',
-  altin: '#C9A45C',
-  krem: '#F5F0E8',
-  beyaz: '#FFFFFF',
-  btnMurjum: '#4A2859',
-  basari: '#789681',
-  hata: '#E8C9D1',
-  textDark: '#24152F',
-  textSoft: '#5A3A70',
-};
 
 const sans = 'var(--font-inter), sans-serif';
 
@@ -86,7 +74,7 @@ export default function SignPage() {
     if (canvasRef.current && step === 'patientSign') {
       padRef.current = new SignaturePad(canvasRef.current, {
         backgroundColor: 'rgb(255, 255, 255)',
-        penColor: T.bgMurjum,
+        penColor: T.bg,
       });
     }
 
@@ -170,7 +158,7 @@ export default function SignPage() {
           alignItems: 'center',
           justifyContent: 'center',
           padding: 24,
-          background: T.krem,
+          background: T.cream,
           color: T.textDark,
           fontFamily: sans,
           textAlign: 'center',
@@ -189,7 +177,7 @@ export default function SignPage() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: T.krem,
+          background: T.cream,
           color: T.textDark,
           fontFamily: sans,
         }}
@@ -206,7 +194,7 @@ export default function SignPage() {
       className={inter.className}
       style={{
         minHeight: '100vh',
-        background: T.krem,
+        background: T.cream,
         padding: '24px 16px',
         boxSizing: 'border-box',
         fontFamily: sans,
@@ -217,7 +205,7 @@ export default function SignPage() {
           width: '100%',
           maxWidth: 520,
           margin: '0 auto',
-          background: T.beyaz,
+          background: T.white,
           borderRadius: 14,
           padding: 24,
           boxSizing: 'border-box',
@@ -231,17 +219,7 @@ export default function SignPage() {
             marginBottom: 28,
           }}
         >
-          <div
-            style={{
-              color: T.altin,
-              fontSize: 14,
-              fontWeight: 700,
-              letterSpacing: 1.2,
-              marginBottom: 12,
-            }}
-          >
-            NOVANTİS SAĞLIK &amp; GÜZELLİK
-          </div>
+          <img src="/logo.png" alt="Novantis" style={{ height: 64, width: 'auto', display: 'block', margin: '0 auto 12px' }} />
 
           <h1
             style={{
@@ -272,7 +250,7 @@ export default function SignPage() {
               marginBottom: 18,
               padding: 12,
               borderRadius: 8,
-              background: T.hata,
+              background: T.error,
               color: T.textDark,
               fontSize: 14,
               lineHeight: 1.5,
@@ -303,12 +281,12 @@ export default function SignPage() {
                 padding: 12,
                 fontSize: 16,
                 borderRadius: 8,
-                border: `1px solid ${T.ametist}40`,
+                border: `1px solid ${T.purple}40`,
                 width: '100%',
                 boxSizing: 'border-box',
                 fontFamily: sans,
                 color: T.textDark,
-                background: T.beyaz,
+                background: T.white,
               }}
             />
 
@@ -325,8 +303,8 @@ export default function SignPage() {
                 marginTop: 18,
                 width: '100%',
                 padding: '13px 24px',
-                background: T.btnMurjum,
-                color: T.beyaz,
+                background: T.purpleDark,
+                color: T.white,
                 border: 'none',
                 borderRadius: 8,
                 fontWeight: 700,
@@ -369,9 +347,9 @@ export default function SignPage() {
                   flex: 1,
                   padding: '16px 10px',
                   fontSize: 15,
-                  background: T.beyaz,
-                  color: T.btnMurjum,
-                  border: `1px solid ${T.ametist}40`,
+                  background: T.white,
+                  color: T.purpleDark,
+                  border: `1px solid ${T.purple}40`,
                   borderRadius: 8,
                   fontWeight: 700,
                   cursor: 'pointer',
@@ -391,9 +369,9 @@ export default function SignPage() {
                   flex: 1,
                   padding: '16px 10px',
                   fontSize: 15,
-                  background: T.beyaz,
-                  color: T.btnMurjum,
-                  border: `1px solid ${T.ametist}40`,
+                  background: T.white,
+                  color: T.purpleDark,
+                  border: `1px solid ${T.purple}40`,
                   borderRadius: 8,
                   fontWeight: 700,
                   cursor: 'pointer',
@@ -444,8 +422,8 @@ export default function SignPage() {
                   flex: 1,
                   padding: '14px 10px',
                   fontSize: 15,
-                  background: T.btnMurjum,
-                  color: T.beyaz,
+                  background: T.purpleDark,
+                  color: T.white,
                   border: 'none',
                   borderRadius: 8,
                   fontWeight: 700,
@@ -463,9 +441,9 @@ export default function SignPage() {
                   flex: 1,
                   padding: '14px 10px',
                   fontSize: 15,
-                  background: T.beyaz,
+                  background: T.white,
                   color: T.textDark,
-                  border: `1px solid ${T.ametist}40`,
+                  border: `1px solid ${T.purple}40`,
                   borderRadius: 8,
                   fontWeight: 700,
                   cursor: 'pointer',
@@ -505,9 +483,9 @@ export default function SignPage() {
               style={{
                 width: '100%',
                 overflow: 'hidden',
-                border: `1px solid ${T.ametist}40`,
+                border: `1px solid ${T.purple}40`,
                 borderRadius: 8,
-                background: T.beyaz,
+                background: T.white,
               }}
             >
               <canvas
@@ -536,8 +514,8 @@ export default function SignPage() {
                 style={{
                   padding: '11px 18px',
                   borderRadius: 8,
-                  border: `1px solid ${T.ametist}40`,
-                  background: T.beyaz,
+                  border: `1px solid ${T.purple}40`,
+                  background: T.white,
                   color: T.textDark,
                   fontWeight: 600,
                   fontSize: 13,
@@ -556,8 +534,8 @@ export default function SignPage() {
                 marginTop: 18,
                 width: '100%',
                 padding: '14px 20px',
-                background: T.btnMurjum,
-                color: T.beyaz,
+                background: T.purpleDark,
+                color: T.white,
                 border: 'none',
                 borderRadius: 8,
                 fontWeight: 700,
@@ -598,8 +576,8 @@ export default function SignPage() {
                 height: 56,
                 margin: '0 auto 16px',
                 borderRadius: '50%',
-                background: T.basari,
-                color: T.beyaz,
+                background: T.success,
+                color: T.white,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',

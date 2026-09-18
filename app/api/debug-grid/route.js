@@ -2,11 +2,13 @@ import { NextResponse } from 'next/server';
 import { PDFDocument, rgb } from 'pdf-lib';
 import fs from 'fs';
 import path from 'path';
+import { getSignedFileUrl } from '@/lib/storage';
 
 export async function GET(request) {
-  const session = request.cookies.get('admin_session');
-  if (!session) {
-    return NextResponse.json({ error: 'Yetkisiz erişim' }, { status: 401 });
+  // Sadece PDF koordinat kalibrasyonu için kullanılan bir geliştirici aracı;
+  // production'da tamamen kapalı tutulur.
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Bulunamadı' }, { status: 404 });
   }
 
   try {
@@ -14,15 +16,25 @@ export async function GET(request) {
     const signedId = searchParams.get('signedId');
     const templateFile = searchParams.get('file') || 'dolgu_uygulama_onam_fromu.pdf';
 
-    const pdfPath = signedId
-      ? path.join(process.cwd(), 'public', 'signed', `${signedId}.pdf`)
-      : path.join(process.cwd(), 'public', templateFile);
+    let existingPdfBytes;
 
-    if (!fs.existsSync(pdfPath)) {
-      return NextResponse.json({ error: `PDF dosyası bulunamadı: ${pdfPath}` }, { status: 404 });
+    if (signedId) {
+      // İmzalı PDF'ler artık Supabase Storage'da; anlık imzalı URL üzerinden indirilir.
+      const signedUrl = await getSignedFileUrl(`signed/${signedId}.pdf`, 60);
+      const res = await fetch(signedUrl);
+      if (!res.ok) {
+        return NextResponse.json({ error: `İmzalı PDF bulunamadı: ${signedId}` }, { status: 404 });
+      }
+      existingPdfBytes = Buffer.from(await res.arrayBuffer());
+    } else {
+      const pdfPath = path.join(process.cwd(), 'public', templateFile);
+
+      if (!fs.existsSync(pdfPath)) {
+        return NextResponse.json({ error: `PDF dosyası bulunamadı: ${pdfPath}` }, { status: 404 });
+      }
+
+      existingPdfBytes = fs.readFileSync(pdfPath);
     }
-
-    const existingPdfBytes = fs.readFileSync(pdfPath);
     const pdfDoc = await PDFDocument.load(existingPdfBytes);
     const pages = pdfDoc.getPages();
 

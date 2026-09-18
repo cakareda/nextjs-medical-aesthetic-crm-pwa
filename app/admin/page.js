@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Inter } from 'next/font/google';
+import { Inter, Playfair_Display } from 'next/font/google';
+import { T } from '@/lib/theme';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -10,19 +11,14 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
-// ---- NOVANTİS MARKA RENK PALETİ (Nurlana'nın istediği) ----
-const T = {
-  bg: '#24152F',        // mürdüm - ana arka plan
-  purple: '#5A3A70',     // ametist - ikincil
-  purpleDark: '#4A2859', // buton mürdüm
-  gold: '#C9A45C',       // altın - vurgu
-  cream: '#FFF0E8',      // krem - kart/form alanları
-  white: '#FFFFFF',
-  success: '#789681',    // adaçayı - başarı
-  error: '#E8C9D1',      // gül tonu - hata/uyarı
-};
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  weight: ['600', '700'],
+  variable: '--font-playfair',
+});
 
 const sans = 'var(--font-inter), sans-serif';
+const serif = 'var(--font-playfair), Georgia, serif';
 
 function getIstanbulDateString(dateInput = new Date()) {
   const date = new Date(dateInput);
@@ -242,15 +238,13 @@ export default function AdminDashboardPage() {
 
   return (
     <div
-      className={inter.variable}
+      className={`${inter.variable} ${playfair.variable}`}
       style={{
-        maxWidth: 1040,
+        maxWidth: 1080,
         margin: '0 auto',
-        background: T.bg,
         padding: '8px 4px 36px',
         fontFamily: sans,
-        minHeight: '100vh',
-        color: T.white,
+        color: T.bg,
       }}
     >
       {/* ÜST BAŞLIK */}
@@ -261,25 +255,25 @@ export default function AdminDashboardPage() {
           alignItems: 'flex-end',
           marginBottom: 28,
           paddingBottom: 20,
-          borderBottom: '1px solid rgba(255,255,255,0.12)',
+          borderBottom: `1px solid ${T.purple}30`,
           gap: 20,
           flexWrap: 'wrap',
         }}
       >
         <div>
-          <p style={{ margin: '0 0 6px 0', fontSize: 13, fontWeight: 700, color: T.gold, letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: sans }}>
+          <p style={{ margin: '0 0 6px 0', fontSize: 13, fontWeight: 700, color: T.purpleDark, letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: sans }}>
             Novantis Anasayfa Paneli
           </p>
-          <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700, color: T.white, fontFamily: sans, letterSpacing: '-0.01em' }}>
+          <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700, color: T.bg, fontFamily: sans, letterSpacing: '-0.01em' }}>
             {formatDate()}
           </h1>
         </div>
 
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 28, fontWeight: 700, color: T.gold, fontFamily: sans, lineHeight: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: T.gold, borderRadius: 12, padding: '10px 20px' }}>
+          <div style={{ fontSize: 26, fontWeight: 800, color: T.bg, fontFamily: serif, lineHeight: 1 }}>
             {stats.todayAppointmentsCount}
           </div>
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>
+          <div style={{ fontSize: 11.5, color: T.bg, fontWeight: 700, lineHeight: 1.2, maxWidth: 70 }}>
             bugünkü randevu
           </div>
         </div>
@@ -290,27 +284,27 @@ export default function AdminDashboardPage() {
         className="dashboard-metrics"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          border: `1px solid ${T.purple}`,
-          borderRadius: 12,
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: 16,
           marginBottom: 26,
-          background: T.cream,
-          overflow: 'hidden',
         }}
       >
         {[
           { label: 'Kayıtlı toplam hasta', value: stats.totalPatients, color: T.purpleDark },
           { label: 'Bugünkü randevular', value: stats.todayAppointmentsCount, color: T.success },
+          { label: 'Yarının randevuları', value: tomorrowAppointments.length, color: '#8A6A1E' },
           { label: 'Bekleyen rötuş / kontrol', value: stats.pendingTouchUpsCount, color: '#8B4A5A' },
-        ].map((item, index) => (
+        ].map((item) => (
           <div
             key={item.label}
             style={{
-              padding: '18px 22px',
-              borderLeft: index === 0 ? 'none' : `1px solid ${T.purple}30`,
+              background: T.white,
+              border: `1px solid ${T.purple}30`,
+              borderRadius: 16,
+              padding: 24,
             }}
           >
-            <div style={{ fontSize: 30, fontWeight: 800, color: item.color, fontFamily: sans, lineHeight: 1 }}>
+            <div style={{ fontSize: 36, fontWeight: 700, color: item.color, fontFamily: serif, lineHeight: 1 }}>
               {item.value}
             </div>
             <div style={{ fontSize: 12.5, color: T.purple, marginTop: 8, fontWeight: 600 }}>
@@ -326,7 +320,7 @@ export default function AdminDashboardPage() {
         style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 26 }}
       >
         {/* BUGÜNÜN PROGRAMI */}
-        <div style={{ background: T.cream, border: `1px solid ${T.purple}`, borderLeft: `3px solid ${T.gold}`, borderRadius: 12, padding: '20px 22px' }}>
+        <div style={{ background: T.white, border: `1px solid ${T.purple}30`, borderLeft: `3px solid ${T.gold}`, borderRadius: 16, padding: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
             <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: T.bg, fontFamily: sans }}>
               Bugünün programı
@@ -391,7 +385,7 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* YARININ HATIRLATMALARI */}
-        <div style={{ background: T.cream, border: `1px solid ${T.purple}`, borderLeft: `3px solid ${T.purpleDark}`, borderRadius: 12, padding: '20px 22px' }}>
+        <div style={{ background: T.white, border: `1px solid ${T.purple}30`, borderLeft: `3px solid ${T.purpleDark}`, borderRadius: 16, padding: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
             <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: T.bg, fontFamily: sans }}>
               Yarının hatırlatmaları
@@ -467,7 +461,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* GÜNÜN NOTLARI */}
-      <div style={{ background: T.cream, border: `1px solid ${T.purple}`, borderRadius: 12, padding: '24px 26px', marginBottom: 20 }}>
+      <div style={{ background: T.white, border: `1px solid ${T.purple}30`, borderRadius: 16, padding: 24, marginBottom: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: T.bg, fontFamily: sans }}>
@@ -492,80 +486,74 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        <div className="dashboard-notes" style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr', gap: 22 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <textarea
-              rows={4}
-              value={noteContent}
-              onChange={(event) => setNoteContent(event.target.value)}
-              placeholder={`${selectedNoteDate} tarihi için klinik notlarını buraya yazın...`}
+        <div className="dashboard-notes" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <textarea
+            rows={4}
+            value={noteContent}
+            onChange={(event) => setNoteContent(event.target.value)}
+            placeholder={`${selectedNoteDate} tarihi için klinik notlarını buraya yazın...`}
+            style={{
+              width: '100%',
+              padding: 13,
+              borderRadius: 8,
+              border: `1px solid ${T.purple}`,
+              fontSize: 14,
+              fontFamily: sans,
+              boxSizing: 'border-box',
+              outline: 'none',
+              resize: 'vertical',
+              color: T.bg,
+              background: T.white,
+            }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={handleSaveNote}
+              disabled={noteSaving}
               style={{
-                width: '100%',
-                padding: 13,
+                background: T.purpleDark,
+                color: T.gold,
+                border: 'none',
+                padding: '10px 22px',
                 borderRadius: 8,
-                border: `1px solid ${T.purple}`,
-                fontSize: 14,
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: noteSaving ? 'default' : 'pointer',
                 fontFamily: sans,
-                boxSizing: 'border-box',
-                outline: 'none',
-                resize: 'vertical',
-                color: T.bg,
-                background: T.white,
+                opacity: noteSaving ? 0.7 : 1,
               }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={handleSaveNote}
-                disabled={noteSaving}
-                style={{
-                  background: T.purpleDark,
-                  color: T.gold,
-                  border: 'none',
-                  padding: '10px 22px',
-                  borderRadius: 8,
-                  fontWeight: 700,
-                  fontSize: 13,
-                  cursor: noteSaving ? 'default' : 'pointer',
-                  fontFamily: sans,
-                  opacity: noteSaving ? 0.7 : 1,
-                }}
-              >
-                {noteSaving ? 'Kaydediliyor...' : 'Notu kaydet'}
-              </button>
-            </div>
+            >
+              {noteSaving ? 'Kaydediliyor...' : 'Notu kaydet'}
+            </button>
           </div>
 
-          <div style={{ background: '#F0E7F2', border: `1px solid ${T.purple}`, borderRadius: 8, padding: 14, maxHeight: 160, overflowY: 'auto' }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: T.purple, marginBottom: 10, paddingBottom: 8, borderBottom: `1px solid ${T.purple}30` }}>
-              Geçmiş notlar arşivi
-            </div>
+          <details style={{ background: '#F0E7F2', border: `1px solid ${T.purple}30`, borderRadius: 8, padding: '10px 14px' }}>
+            <summary style={{ fontSize: 12, fontWeight: 700, color: T.purple, cursor: 'pointer' }}>
+              Geçmiş notlar arşivi {pastNotesList.length > 0 ? `(${pastNotesList.length})` : ''}
+            </summary>
 
             {pastNotesList.length === 0 ? (
-              <div style={{ fontSize: 11.5, color: T.purple, fontFamily: sans }}>
+              <div style={{ fontSize: 11.5, color: T.purple, fontFamily: sans, marginTop: 10 }}>
                 Henüz geçmiş kayıt yok.
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
                 {pastNotesList.map((note) => (
                   <button
                     type="button"
                     key={note.id}
                     onClick={() => setSelectedNoteDate(note.date)}
                     style={{
-                      textAlign: 'left',
-                      background: selectedNoteDate === note.date ? '#E9DDF0' : 'transparent',
-                      border: 'none',
-                      borderLeft: selectedNoteDate === note.date ? `2px solid ${T.gold}` : '2px solid transparent',
-                      padding: '6px 9px',
-                      borderRadius: 4,
+                      background: selectedNoteDate === note.date ? T.purpleDark : T.white,
+                      border: `1px solid ${selectedNoteDate === note.date ? T.purpleDark : T.purple}40`,
+                      padding: '6px 12px',
+                      borderRadius: 999,
                       fontSize: 12,
                       cursor: 'pointer',
                       fontWeight: selectedNoteDate === note.date ? 700 : 500,
-                      color: T.bg,
+                      color: selectedNoteDate === note.date ? T.gold : T.bg,
                       whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
                       fontFamily: sans,
                     }}
                   >
@@ -574,7 +562,7 @@ export default function AdminDashboardPage() {
                 ))}
               </div>
             )}
-          </div>
+          </details>
         </div>
       </div>
 
@@ -586,12 +574,9 @@ export default function AdminDashboardPage() {
         }
         @media (max-width: 700px) {
           .dashboard-metrics {
-            grid-template-columns: 1fr !important;
+            grid-template-columns: repeat(2, 1fr) !important;
           }
           .dashboard-appointments {
-            grid-template-columns: 1fr !important;
-          }
-          .dashboard-notes {
             grid-template-columns: 1fr !important;
           }
         }

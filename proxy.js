@@ -9,7 +9,7 @@ export function proxy(request) {
   const { pathname } = request.nextUrl;
   const method = request.method;
 
-  const isAdminPage = pathname.startsWith('/admin');
+  const isAdminPage = pathname.startsWith('/admin') || pathname.startsWith('/coord-picker');
   const isLoginPage = pathname === '/login';
 
   // Sadece hastanın imza linkiyle okuyacağı GET isteği herkese açık.
@@ -45,5 +45,5 @@ export function proxy(request) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/login', '/api/:path*'],
+  matcher: ['/admin/:path*', '/coord-picker/:path*', '/login', '/api/:path*'],
 };
