@@ -112,7 +112,7 @@ export default function AdminLayout({ children }) {
         <div>
           {/* LOGO & BAŞLIK */}
           <div style={{ padding: '0 8px 20px 8px', borderBottom: '1px solid rgba(255,255,255,0.1)', textAlign: 'center' }}>
-            <img src="/logo-light.png" alt="Novantis" style={{ height: 56, width: 'auto', margin: '0 auto', display: 'block' }} />
+            <img src="/logo-light.png" alt="Novantis" style={{ height: 76, width: 'auto', margin: '0 auto', display: 'block' }} />
           </div>
 
           {/* MENÜ LİSTESİ */}

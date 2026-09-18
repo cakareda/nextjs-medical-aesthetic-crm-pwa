@@ -108,6 +108,11 @@ export async function GET(request, context) {
             },
           },
         },
+        documents: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
       },
     });
 

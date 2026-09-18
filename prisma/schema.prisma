@@ -19,6 +19,18 @@ model Patient {
 
   treatments   Treatment[]
   appointments Appointment[]
+  documents    PatientDocument[]
+}
+
+// Eski (kağıt üzerinde imzalanmış) onam formlarının taranmış/fotoğraflanmış
+// hallerini hasta profiline eklemek için — dijital imza akışından bağımsız.
+model PatientDocument {
+  id        String   @id @default(uuid())
+  patientId String
+  patient   Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  url       String
+  label     String?
+  createdAt DateTime @default(now())
 }
 
 model Treatment {

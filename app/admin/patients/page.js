@@ -2,7 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { T } from '@/lib/theme';
+import Drawer from '@/components/Drawer';
+import PhoneInput from '@/components/PhoneInput';
 
 const IconSearch = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -24,11 +27,19 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+const emptyNewPatient = { fullName: '', phone: '', birthDate: '', gender: '', allergies: '', notes: '' };
+
 export default function PatientsPage() {
+  const router = useRouter();
   const [patients, setPatients] = useState([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
+  const [newPatient, setNewPatient] = useState(emptyNewPatient);
+  const [addSaving, setAddSaving] = useState(false);
+  const [addError, setAddError] = useState('');
 
   const fetchPatients = useCallback(async (q) => {
     setLoading(true);
@@ -51,6 +62,32 @@ export default function PatientsPage() {
     const timeout = setTimeout(() => fetchPatients(query), 300);
     return () => clearTimeout(timeout);
   }, [query, fetchPatients]);
+
+  const handleAddPatient = async (e) => {
+    e.preventDefault();
+    if (!newPatient.fullName.trim()) return setAddError('Ad Soyad zorunludur.');
+    if (!newPatient.phone.trim()) return setAddError('Telefon numarası zorunludur.');
+
+    setAddSaving(true);
+    setAddError('');
+    try {
+      const res = await fetch('/api/patients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newPatient),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Hasta eklenemedi.');
+
+      // Eski hasta kaydı: onam süreci olmadan doğrudan profiline gidip
+      // geçmiş işlem/belge eklenebilir.
+      router.push(`/admin/patients/${data.id}`);
+    } catch (err) {
+      setAddError(err.message || 'Hasta eklenemedi.');
+    } finally {
+      setAddSaving(false);
+    }
+  };
 
   return (
     <main style={{ maxWidth: 1180, margin: '0 auto', color: T.bg, fontFamily: 'sans-serif' }}>
@@ -78,6 +115,14 @@ export default function PatientsPage() {
                 style={{ width: '100%', boxSizing: 'border-box', height: 46, padding: '0 14px 0 42px', border: `1px solid ${T.purple}`, borderRadius: 10, background: T.cream, color: T.bg, fontSize: 14, outline: 'none' }}
               />
             </div>
+
+            <button
+              type="button"
+              onClick={() => { setNewPatient(emptyNewPatient); setAddError(''); setIsAddDrawerOpen(true); }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: T.white, border: `1px solid ${T.purple}50`, color: T.bg, padding: '0 18px', height: 46, borderRadius: 10, fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', cursor: 'pointer' }}
+            >
+              <IconUserPlus /> Yeni Hasta Ekle
+            </button>
 
             <Link
               href="/admin/new-session"
@@ -195,6 +240,56 @@ export default function PatientsPage() {
         </section>
       </div>
 
+      <Drawer open={isAddDrawerOpen} onClose={() => !addSaving && setIsAddDrawerOpen(false)} title="Yeni Hasta Ekle">
+        <p style={{ margin: '0 0 16px', fontSize: 12.5, color: T.purple, lineHeight: 1.5 }}>
+          Onam süreci olmadan doğrudan hasta kaydı oluşturur — eski (kağıt üzerinde
+          onamlı) hastaları sisteme girmek için kullanabilirsiniz. Kaydettikten
+          sonra hasta profilinden geçmiş işlemleri ve taranmış onam belgesini
+          ekleyebilirsiniz.
+        </p>
+
+        {addError && (
+          <div style={{ padding: 12, borderRadius: 8, background: T.error, color: '#5A2030', fontSize: 13, fontWeight: 600, marginBottom: 14 }}>
+            {addError}
+          </div>
+        )}
+
+        <form onSubmit={handleAddPatient} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={drawerLabelStyle}>Ad Soyad</label>
+            <input value={newPatient.fullName} onChange={(e) => setNewPatient({ ...newPatient, fullName: e.target.value })} style={drawerInputStyle} />
+          </div>
+          <div>
+            <label style={drawerLabelStyle}>Telefon</label>
+            <PhoneInput value={newPatient.phone} onChange={(val) => setNewPatient({ ...newPatient, phone: val })} required />
+          </div>
+          <div>
+            <label style={drawerLabelStyle}>Doğum Tarihi (opsiyonel)</label>
+            <input type="date" value={newPatient.birthDate} onChange={(e) => setNewPatient({ ...newPatient, birthDate: e.target.value })} style={drawerInputStyle} />
+          </div>
+          <div>
+            <label style={drawerLabelStyle}>Cinsiyet (opsiyonel)</label>
+            <select value={newPatient.gender} onChange={(e) => setNewPatient({ ...newPatient, gender: e.target.value })} style={drawerInputStyle}>
+              <option value="">Seçiniz</option>
+              <option value="Kadın">Kadın</option>
+              <option value="Erkek">Erkek</option>
+            </select>
+          </div>
+          <div>
+            <label style={drawerLabelStyle}>Alerjiler / Hassasiyet (opsiyonel)</label>
+            <input value={newPatient.allergies} onChange={(e) => setNewPatient({ ...newPatient, allergies: e.target.value })} style={drawerInputStyle} />
+          </div>
+          <div>
+            <label style={drawerLabelStyle}>Not (opsiyonel)</label>
+            <textarea rows={3} value={newPatient.notes} onChange={(e) => setNewPatient({ ...newPatient, notes: e.target.value })} style={{ ...drawerInputStyle, resize: 'vertical' }} />
+          </div>
+
+          <button type="submit" disabled={addSaving} style={{ background: T.purpleDark, color: T.gold, border: 'none', padding: 12, borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: addSaving ? 'not-allowed' : 'pointer', opacity: addSaving ? 0.7 : 1 }}>
+            {addSaving ? 'Kaydediliyor...' : 'Hastayı Kaydet'}
+          </button>
+        </form>
+      </Drawer>
+
       <style jsx>{`
         .patients-mobile-list { display: none; }
         @media (max-width: 760px) {
@@ -205,3 +300,23 @@ export default function PatientsPage() {
     </main>
   );
 }
+
+const drawerLabelStyle = {
+  fontSize: 11.5,
+  fontWeight: 700,
+  color: T.purple,
+  display: 'block',
+  marginBottom: 5,
+};
+
+const drawerInputStyle = {
+  width: '100%',
+  padding: '10px 12px',
+  borderRadius: 8,
+  border: `1px solid ${T.purple}`,
+  fontSize: 13.5,
+  boxSizing: 'border-box',
+  background: T.white,
+  color: T.bg,
+  outline: 'none',
+};

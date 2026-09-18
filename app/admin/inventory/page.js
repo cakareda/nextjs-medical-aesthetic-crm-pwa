@@ -72,6 +72,7 @@ export default function InventoryPage() {
 
   const [newProduct, setNewProduct] = useState(emptyProduct);
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
+  const [productSearch, setProductSearch] = useState('');
 
   const [movementProduct, setMovementProduct] = useState(null);
   const [movementQuantity, setMovementQuantity] = useState('');
@@ -104,6 +105,12 @@ export default function InventoryPage() {
     const set = new Set(products.map((p) => (p.category || '').trim()).filter(Boolean));
     return Array.from(set).sort();
   }, [products]);
+
+  const filteredProducts = useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) => p.name.toLowerCase().includes(q));
+  }, [products, productSearch]);
 
   // ─────────────────────────────────────────────
   // TOPLU YÜKLEME
@@ -376,6 +383,17 @@ export default function InventoryPage() {
           </div>
         </div>
 
+        {/* ARAMA */}
+        <div style={{ marginBottom: 14, position: 'relative', maxWidth: 360 }}>
+          <input
+            type="text"
+            placeholder="Ürün adı ara..."
+            value={productSearch}
+            onChange={(e) => setProductSearch(e.target.value)}
+            style={{ ...inputStyle, paddingLeft: 14 }}
+          />
+        </div>
+
         {/* ÜRÜN TABLOSU */}
         <div style={{ background: T.white, border: '1px solid rgba(90,58,112,0.16)', borderRadius: 16, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13.5 }}>
@@ -392,10 +410,12 @@ export default function InventoryPage() {
             <tbody>
               {loading ? (
                 <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: T.purple, fontWeight: 600 }}>Yükleniyor...</td></tr>
-              ) : products.length === 0 ? (
-                <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: T.purple }}>Kayıtlı ürün bulunmuyor.</td></tr>
+              ) : filteredProducts.length === 0 ? (
+                <tr><td colSpan={6} style={{ ...tdStyle, textAlign: 'center', color: T.purple }}>
+                  {productSearch ? 'Aramanıza uygun ürün bulunamadı.' : 'Kayıtlı ürün bulunmuyor.'}
+                </td></tr>
               ) : (
-                products.map((prod) => {
+                filteredProducts.map((prod) => {
                   const stock = Number(prod.stockQuantity);
                   const minStock = Number(prod.minStockAlert);
                   const isCritical = stock <= minStock;

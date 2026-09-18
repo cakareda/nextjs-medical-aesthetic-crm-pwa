@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { uploadToStorage } from '@/lib/storage';
 
-const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'];
 const MAX_SIZE_BYTES = 8 * 1024 * 1024; // 8MB
 
 export async function POST(request) {
@@ -14,7 +14,7 @@ export async function POST(request) {
     }
 
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return NextResponse.json({ error: 'Sadece PNG, JPEG veya WEBP formatları kabul edilir.' }, { status: 400 });
+      return NextResponse.json({ error: 'Sadece PNG, JPEG, WEBP veya PDF formatları kabul edilir.' }, { status: 400 });
     }
 
     if (file.size > MAX_SIZE_BYTES) {

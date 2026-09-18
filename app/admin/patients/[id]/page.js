@@ -246,6 +246,45 @@ export default function PatientDetailPage() {
     }
   };
 
+  const [uploadingDocument, setUploadingDocument] = useState(false);
+
+  const handleDocumentUpload = async (file) => {
+    if (!file) return;
+    setUploadingDocument(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok) throw new Error(uploadData.error);
+
+      const docRes = await fetch(`/api/patients/${id}/documents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: uploadData.url, label: file.name }),
+      });
+      const docData = await docRes.json();
+      if (!docRes.ok) throw new Error(docData.error);
+      fetchAll();
+    } catch (err) {
+      alert('Belge yüklenemedi: ' + err.message);
+    } finally {
+      setUploadingDocument(false);
+    }
+  };
+
+  const handleDeleteDocument = async (docId) => {
+    if (!confirm('Bu belgeyi silmek istediğinize emin misiniz?')) return;
+    try {
+      const res = await fetch(`/api/patients/${id}/documents/${docId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) return alert(data.error || 'Belge silinemedi');
+      fetchAll();
+    } catch (err) {
+      alert('Belge silinemedi: ' + err.message);
+    }
+  };
+
   const handleCreateAppointment = async () => {
     if (!appointmentForm.date) return alert('Lütfen tarih ve saat seçin.');
     try {
@@ -299,6 +338,14 @@ export default function PatientDetailPage() {
             ← Hasta Listesine Dön
           </Link>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <a
+              href={`/api/patients/${id}/pdf-summary`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ ...btnStyle('#F0E7F2', T.purpleDark), textDecoration: 'none' }}
+            >
+              PDF Özet
+            </a>
             <button onClick={() => setShowAddAppointment(!showAddAppointment)} style={btnStyle(T.purpleDark, T.gold)}>
               Randevu Oluştur
             </button>
@@ -396,6 +443,48 @@ export default function PatientDetailPage() {
           {patient.allergies && !editingPatient && (
             <div style={{ marginTop: 16, display: 'inline-block', background: T.error, color: '#5A2030', padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 700 }}>
               Alerji / Hassasiyet: {patient.allergies}
+            </div>
+          )}
+        </div>
+
+        {/* ONAM / KONSÜLTASYON BELGELERİ */}
+        <div style={{ ...cardStyle, marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: T.purpleDark }}>
+              Onam / Konsültasyon Belgeleri
+            </h3>
+            <label style={{ ...btnStyle(T.purpleDark, T.gold), cursor: uploadingDocument ? 'not-allowed' : 'pointer', opacity: uploadingDocument ? 0.7 : 1 }}>
+              {uploadingDocument ? 'Yükleniyor...' : '+ Belge Yükle (Fotoğraf / PDF)'}
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                style={{ display: 'none' }}
+                disabled={uploadingDocument}
+                onChange={(e) => { handleDocumentUpload(e.target.files[0]); e.target.value = ''; }}
+              />
+            </label>
+          </div>
+
+          {(!patient.documents || patient.documents.length === 0) ? (
+            <p style={{ margin: 0, fontSize: 13, color: T.purple }}>
+              Henüz belge eklenmedi. Kağıt üzerinde imzalanmış eski onam formlarının
+              taranmış halini veya fotoğrafını buraya ekleyebilirsiniz.
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+              {patient.documents.map((doc) => {
+                const isPdf = doc.url.toLowerCase().endsWith('.pdf');
+                return (
+                  <div key={doc.id} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: 8, padding: '8px 10px' }}>
+                    <a href={doc.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 700, color: '#0369A1', textDecoration: 'none' }}>
+                      {isPdf ? '📄' : '🖼️'} {doc.label || 'Belge'}
+                    </a>
+                    <button onClick={() => handleDeleteDocument(doc.id)} style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                      Sil
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

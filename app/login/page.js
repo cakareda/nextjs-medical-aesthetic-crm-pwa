@@ -152,7 +152,7 @@ export default function LoginPage() {
               alignItems: 'center',
             }}
           >
-            <img src="/logo-light.png" alt="Novantis" style={{ height: 84, width: 'auto', display: 'block' }} />
+            <img src="/logo-light.png" alt="Novantis" style={{ height: 104, width: 'auto', display: 'block' }} />
           </div>
 
           <p
