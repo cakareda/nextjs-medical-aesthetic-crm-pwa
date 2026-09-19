@@ -6,6 +6,7 @@ import PhoneInput from '@/components/PhoneInput';
 import { buildWhatsAppUrl } from '@/lib/phone-utils';
 import { T } from '@/lib/theme';
 import { getColorHex } from '@/lib/appointment-colors';
+import { APPOINTMENT_PROCEDURE_OPTIONS, buildAppointmentTitle } from '@/lib/appointment-categories';
 import Drawer from '@/components/Drawer';
 
 // SAF SVG İKON BİLEŞENLERİ
@@ -83,6 +84,9 @@ export default function AppointmentsPage() {
   const [isNewPatientMode, setIsNewPatientMode] = useState(false);
   const [quickPatient, setQuickPatient] = useState({ fullName: '', phone: '' });
 
+  const [products, setProducts] = useState([]);
+  const [selectedProductId, setSelectedProductId] = useState('');
+
   const [googleConnected, setGoogleConnected] = useState(null); // null = henüz bilinmiyor
 
   useEffect(() => {
@@ -103,15 +107,17 @@ export default function AppointmentsPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [appRes, patRes] = await Promise.all([
+      const [appRes, patRes, prodRes] = await Promise.all([
         fetch('/api/appointments'),
         fetch('/api/patients'),
+        fetch('/api/inventory/products'),
       ]);
       const appData = await appRes.json();
       const patData = await patRes.json();
 
       if (appRes.ok) setAppointments(appData);
       if (patRes.ok) setPatients(patData);
+      if (prodRes.ok) setProducts(await prodRes.json());
     } catch (err) {
       console.error(err);
     } finally {
@@ -143,7 +149,7 @@ export default function AppointmentsPage() {
 
   const timeSlots = useMemo(() => {
     const slots = [];
-    for (let hour = 8; hour <= 20; hour++) {
+    for (let hour = 9; hour <= 20; hour++) {
       const hStr = hour.toString().padStart(2, '0');
       slots.push(`${hStr}:00`);
       if (hour !== 20) slots.push(`${hStr}:30`);
@@ -260,6 +266,7 @@ export default function AppointmentsPage() {
         setPatientSearch('');
         setQuickPatient({ fullName: '', phone: '' });
         setIsNewPatientMode(false);
+        setSelectedProductId('');
         setIsDrawerOpen(false);
         fetchData();
       } else {
@@ -606,6 +613,41 @@ export default function AppointmentsPage() {
               <option value="INITIAL">İlk Seans / Yeni Muayene</option>
               <option value="TOUCH_UP">Rötuş / Kontrol</option>
               <option value="ROUTINE">Rutin Seans</option>
+            </select>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 11, fontWeight: '600', color: '#475569', display: 'block', marginBottom: 4 }}>İşlem (hızlı seçim)</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {APPOINTMENT_PROCEDURE_OPTIONS.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => setNewApp((prev) => ({ ...prev, title: buildAppointmentTitle(opt, products.find((p) => p.id === selectedProductId)?.name) }))}
+                  style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${T.purpleDark}`, background: newApp.title.startsWith(opt) ? T.purpleDark : '#fff', color: newApp.title.startsWith(opt) ? '#fff' : T.purpleDark, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 11, fontWeight: '600', color: '#475569' }}>Ürün (opsiyonel — envanterden)</label>
+            <select
+              value={selectedProductId}
+              onChange={(e) => {
+                const productId = e.target.value;
+                setSelectedProductId(productId);
+                const product = products.find((p) => p.id === productId);
+                setNewApp((prev) => ({ ...prev, title: buildAppointmentTitle(prev.title, product?.name) }));
+              }}
+              style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #cbd5e1', marginTop: 3, fontSize: 12 }}
+            >
+              <option value="">Ürün seçilmedi</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
             </select>
           </div>
 

@@ -106,6 +106,11 @@ export async function GET(request, context) {
                 signedAt: true,
               },
             },
+            photos: {
+              orderBy: {
+                createdAt: 'asc',
+              },
+            },
           },
         },
         documents: {

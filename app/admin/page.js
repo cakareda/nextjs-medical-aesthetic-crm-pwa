@@ -321,11 +321,11 @@ export default function AdminDashboardPage() {
       >
         {/* BUGÜNÜN PROGRAMI */}
         <div style={{ background: T.white, border: `1px solid ${T.purple}30`, borderLeft: `3px solid ${T.gold}`, borderRadius: 16, padding: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: T.bg, fontFamily: sans }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', gap: '4px 12px', marginBottom: 16 }}>
+            <h3 style={{ margin: 0, minWidth: 0, fontSize: 17, fontWeight: 800, color: T.bg, fontFamily: sans }}>
               Bugünün programı
             </h3>
-            <span style={{ fontSize: 12, color: T.purple, fontWeight: 600 }}>
+            <span style={{ fontSize: 12, color: T.purple, fontWeight: 600, flexShrink: 0 }}>
               {todayAppointments.length} randevu
             </span>
           </div>
@@ -347,6 +347,7 @@ export default function AdminDashboardPage() {
                     key={appointment.id}
                     style={{
                       display: 'flex',
+                      flexWrap: 'wrap',
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: 15,
@@ -354,8 +355,8 @@ export default function AdminDashboardPage() {
                       borderTop: index === 0 ? 'none' : `1px solid ${T.purple}25`,
                     }}
                   >
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 9 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 9 }}>
                         <span style={{ fontSize: 15, fontWeight: 800, color: '#8A6A1E', fontFamily: sans }}>
                           {timeStr}
                         </span>
@@ -386,11 +387,11 @@ export default function AdminDashboardPage() {
 
         {/* YARININ HATIRLATMALARI */}
         <div style={{ background: T.white, border: `1px solid ${T.purple}30`, borderLeft: `3px solid ${T.purpleDark}`, borderRadius: 16, padding: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: T.bg, fontFamily: sans }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', gap: '4px 12px', marginBottom: 16 }}>
+            <h3 style={{ margin: 0, minWidth: 0, fontSize: 17, fontWeight: 800, color: T.bg, fontFamily: sans }}>
               Yarının hatırlatmaları
             </h3>
-            <span style={{ fontSize: 12, color: T.purpleDark, fontWeight: 700 }}>
+            <span style={{ fontSize: 12, color: T.purpleDark, fontWeight: 700, flexShrink: 0 }}>
               WhatsApp
             </span>
           </div>
@@ -412,6 +413,7 @@ export default function AdminDashboardPage() {
                     key={appointment.id}
                     style={{
                       display: 'flex',
+                      flexWrap: 'wrap',
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: 15,
@@ -419,8 +421,8 @@ export default function AdminDashboardPage() {
                       borderTop: index === 0 ? 'none' : `1px solid ${T.purple}25`,
                     }}
                   >
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 9 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 9 }}>
                         <span style={{ fontSize: 15, fontWeight: 800, color: T.purpleDark, fontFamily: sans }}>
                           {timeStr}
                         </span>
