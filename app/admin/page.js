@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Inter, Playfair_Display } from 'next/font/google';
 import { T } from '@/lib/theme';
+import { buildWhatsAppUrl } from '@/lib/phone-utils';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -210,19 +211,14 @@ export default function AdminDashboardPage() {
       return;
     }
 
-    let formattedPhone = String(phone).replace(/\D/g, '');
-    if (formattedPhone.startsWith('00')) formattedPhone = formattedPhone.slice(2);
-    if (formattedPhone.startsWith('0')) {
-      formattedPhone = `90${formattedPhone.slice(1)}`;
-    } else if (!formattedPhone.startsWith('90')) {
-      formattedPhone = `90${formattedPhone}`;
-    }
-
+    const procedureName = String(title || 'randevu').split(' – ')[0].trim() || 'randevu';
     const timeFormatted = getIstanbulTime(dateStr);
-    const message = encodeURIComponent(
-      `Sayın ${patientName || 'Hastamız'}, Novantis'te saat ${timeFormatted} için planlanan "${title || 'randevu'}" randevunuzu hatırlatmak isteriz.`
-    );
-    const whatsappUrl = `https://wa.me/${formattedPhone}?text=${message}`;
+    const message = `Sayın ${patientName || 'Hastamız'}, Novantis'te saat ${timeFormatted} için planlanan "${procedureName}" randevunuzu hatırlatmak isteriz.`;
+    const whatsappUrl = buildWhatsAppUrl(phone, message);
+    if (!whatsappUrl) {
+      alert('Telefon numarası geçersiz.');
+      return;
+    }
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   };
 
