@@ -328,7 +328,8 @@ export default function AppointmentsPage() {
   const openWhatsApp = (phone, patientName, dateStr, title) => {
     if (!phone) return alert('Hastanın telefonu yok.');
     const dateFormatted = new Date(dateStr).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
-    const message = `Sayın ${patientName}, Novantis'te ${dateFormatted} tarihindeki "${title}" randevunuzu hatırlatmak isteriz.`;
+    const procedureName = String(title || '').split(' – ')[0].trim();
+    const message = `Sayın ${patientName}, Novantis'te ${dateFormatted} tarihindeki "${procedureName}" randevunuzu hatırlatmak isteriz.`;
 
     const url = buildWhatsAppUrl(phone, message);
     if (!url) return alert('Telefon numarası geçersiz.');

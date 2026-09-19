@@ -69,6 +69,14 @@ const COUNTRIES = [
   ...COUNTRIES_RAW.filter((c) => c.dial !== '90').sort((a, b) => a.name.localeCompare(b.name, 'tr')),
 ];
 
+// En uzun (en spesifik) alan koduna öncelik ver — yoksa örn. Portekiz (351)
+// İtalya'nın (39) önüne geçebilir gibi yanlış eşleşmeler olabilir.
+function detectCountry(digits) {
+  return COUNTRIES
+    .filter((c) => digits.startsWith(c.dial))
+    .sort((a, b) => b.dial.length - a.dial.length)[0];
+}
+
 export default function PhoneInput({ value, onChange, required }) {
   const [dial, setDial] = useState('90');
   const [localNumber, setLocalNumber] = useState('');
@@ -80,7 +88,7 @@ export default function PhoneInput({ value, onChange, required }) {
       return;
     }
     const digits = String(value).replace(/\D/g, '');
-    const match = COUNTRIES.find((c) => digits.startsWith(c.dial));
+    const match = detectCountry(digits);
     if (match) {
       setDial(match.dial);
       setLocalNumber(digits.slice(match.dial.length));
@@ -118,7 +126,20 @@ export default function PhoneInput({ value, onChange, required }) {
         type="tel"
         value={localNumber}
         onChange={(e) => {
-          const digits = e.target.value.replace(/\D/g, '');
+          const raw = e.target.value;
+          const digits = raw.replace(/\D/g, '');
+          // Kullanıcı "+39 351 ..." gibi tam numarayı yapıştırırsa, seçili
+          // ülke kodunu görmezden gelip numaradan otomatik tespit et —
+          // aksi halde önceki ülke koduyla ikiye katlanır (ör. 90 + 39...).
+          if (raw.trim().startsWith('+')) {
+            const match = detectCountry(digits);
+            if (match) {
+              setDial(match.dial);
+              setLocalNumber(digits.slice(match.dial.length));
+              onChange(digits);
+              return;
+            }
+          }
           setLocalNumber(digits);
           emit(dial, digits);
         }}
