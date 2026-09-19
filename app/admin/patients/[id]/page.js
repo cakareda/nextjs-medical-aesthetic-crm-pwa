@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { T } from '@/lib/theme';
 import { UNIT_LABELS, getQuantityOptions } from '@/lib/quantity-options';
+import { APPOINTMENT_PROCEDURE_OPTIONS, buildAppointmentTitle } from '@/lib/appointment-categories';
 
 function formatDateTime(dateStr) {
   if (!dateStr) return '—';
@@ -50,6 +51,7 @@ export default function PatientDetailPage() {
 
   const [showAddAppointment, setShowAddAppointment] = useState(false);
   const [appointmentForm, setAppointmentForm] = useState({ title: 'Rötuş / Kontrol Randevusu', date: '', type: 'TOUCH_UP', notes: '' });
+  const [appointmentProductId, setAppointmentProductId] = useState('');
 
   const [uploadingKey, setUploadingKey] = useState(null);
 
@@ -233,16 +235,30 @@ export default function PatientDetailPage() {
       const uploadData = await uploadRes.json();
       if (!uploadRes.ok) throw new Error(uploadData.error);
 
-      const patchRes = await fetch(`/api/treatments/${treatmentId}`, {
-        method: 'PATCH',
+      const photoRes = await fetch(`/api/treatments/${treatmentId}/photos`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [type === 'before' ? 'beforePhotoUrl' : 'afterPhotoUrl']: uploadData.url }),
+        body: JSON.stringify({ url: uploadData.url, type: type.toUpperCase() }),
       });
-      if (patchRes.ok) fetchAll();
+      const photoData = await photoRes.json();
+      if (!photoRes.ok) throw new Error(photoData.error);
+      fetchAll();
     } catch (err) {
       alert('Fotoğraf yüklenemedi: ' + err.message);
     } finally {
       setUploadingKey(null);
+    }
+  };
+
+  const handleDeletePhoto = async (treatmentId, photoId) => {
+    if (!confirm('Bu fotoğrafı silmek istediğinize emin misiniz?')) return;
+    try {
+      const res = await fetch(`/api/treatments/${treatmentId}/photos/${photoId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) return alert(data.error || 'Fotoğraf silinemedi');
+      fetchAll();
+    } catch (err) {
+      alert('Fotoğraf silinemedi: ' + err.message);
     }
   };
 
@@ -297,6 +313,7 @@ export default function PatientDetailPage() {
       if (!res.ok) return alert(data.error || 'Randevu eklenemedi');
       setShowAddAppointment(false);
       setAppointmentForm({ title: 'Rötuş / Kontrol Randevusu', date: '', type: 'TOUCH_UP', notes: '' });
+      setAppointmentProductId('');
       fetchAll();
     } catch (err) {
       alert('Randevu eklenemedi: ' + err.message);
@@ -377,6 +394,43 @@ export default function PatientDetailPage() {
                 </select>
               </div>
             </div>
+
+            <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={labelStyle}>İşlem (hızlı seçim)</label>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 3 }}>
+                  {APPOINTMENT_PROCEDURE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setAppointmentForm((prev) => ({ ...prev, title: buildAppointmentTitle(opt, products.find((p) => p.id === appointmentProductId)?.name) }))}
+                      style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${T.purpleDark}`, background: appointmentForm.title.startsWith(opt) ? T.purpleDark : T.white, color: appointmentForm.title.startsWith(opt) ? T.gold : T.purpleDark, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label style={labelStyle}>Ürün (opsiyonel — envanterden)</label>
+                <select
+                  value={appointmentProductId}
+                  onChange={(e) => {
+                    const productId = e.target.value;
+                    setAppointmentProductId(productId);
+                    const product = products.find((p) => p.id === productId);
+                    setAppointmentForm((prev) => ({ ...prev, title: buildAppointmentTitle(prev.title, product?.name) }));
+                  }}
+                  style={inputStyle}
+                >
+                  <option value="">Ürün seçilmedi</option>
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
               <button onClick={() => setShowAddAppointment(false)} style={btnStyle('#F0E7F2', T.purpleDark)}>İptal</button>
               <button onClick={handleCreateAppointment} style={btnStyle(T.purpleDark, T.gold)}>Randevuyu Kaydet</button>
@@ -655,22 +709,53 @@ export default function PatientDetailPage() {
                     <div style={{ fontSize: 13, fontWeight: 800, color: T.bg, marginBottom: 12 }}>Görsel Karşılaştırma (Before / After)</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                       {['before', 'after'].map((type) => {
-                        const url = type === 'before' ? t.beforePhotoUrl : t.afterPhotoUrl;
                         const key = `${t.id}-${type}`;
+                        const photos = (t.photos || []).filter((p) => p.type === type.toUpperCase());
+                        // Henüz albüme taşınmamış eski tekli fotoğraf varsa (geçiş dönemi
+                        // yedeği) onu da göster, kaybolmasın.
+                        const legacyUrl = type === 'before' ? t.beforePhotoUrl : t.afterPhotoUrl;
+                        const showLegacy = photos.length === 0 && legacyUrl;
+                        const accentColor = type === 'before' ? '#0284C7' : T.success;
+
                         return (
-                          <div key={type} style={{ background: T.white, border: '1px solid #CBD5E1', borderRadius: 8, padding: 10, textAlign: 'center' }}>
-                            <span style={{ fontSize: 11, fontWeight: 800, color: type === 'before' ? '#0284C7' : T.success, display: 'block', marginBottom: 8, textTransform: 'uppercase' }}>
+                          <div key={type} style={{ background: T.white, border: '1px solid #CBD5E1', borderRadius: 8, padding: 10 }}>
+                            <span style={{ fontSize: 11, fontWeight: 800, color: accentColor, display: 'block', marginBottom: 8, textTransform: 'uppercase', textAlign: 'center' }}>
                               {type === 'before' ? 'ÖNCESİ' : 'SONRASI'}
                             </span>
-                            {url ? (
-                              <img src={url} alt={type} style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 6, marginBottom: 8 }} />
-                            ) : (
+
+                            {photos.length === 0 && !showLegacy && (
                               <div style={{ height: 120, background: '#F1F5F9', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8', fontSize: 12, marginBottom: 8 }}>
                                 Fotoğraf Yok
                               </div>
                             )}
-                            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: type === 'before' ? '#0284C7' : T.success, color: '#fff', padding: '6px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                              {uploadingKey === key ? 'Yükleniyor...' : 'Fotoğraf Seç'}
+
+                            {(photos.length > 0 || showLegacy) && (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                                {showLegacy && (
+                                  <div style={{ position: 'relative', width: 90, height: 90 }}>
+                                    <img src={legacyUrl} alt={type} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }} />
+                                  </div>
+                                )}
+                                {photos.map((photo) => (
+                                  <div key={photo.id} style={{ position: 'relative', width: 90, height: 90 }}>
+                                    <a href={photo.url} target="_blank" rel="noreferrer">
+                                      <img src={photo.url} alt={type} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }} />
+                                    </a>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeletePhoto(t.id, photo.id)}
+                                      title="Sil"
+                                      style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: T.error, color: '#5A2030', border: 'none', fontSize: 12, fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: accentColor, color: '#fff', padding: '6px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                              {uploadingKey === key ? 'Yükleniyor...' : '+ Fotoğraf Ekle'}
                               <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handlePhotoUpload(t.id, e.target.files[0], type)} />
                             </label>
                           </div>

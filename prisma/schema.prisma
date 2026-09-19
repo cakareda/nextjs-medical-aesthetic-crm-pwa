@@ -50,6 +50,8 @@ model Treatment {
   touchUpStatus String    @default("NONE")
   touchUpDate   DateTime?
 
+  // Eski (tekli) alanlar — geriye dönük uyumluluk için tutuluyor, artık
+  // yazılmıyor. Yeni kod TreatmentPhoto tablosunu kullanır (bkz. altta).
   beforePhotoUrl String?
   afterPhotoUrl  String?
 
@@ -59,6 +61,23 @@ model Treatment {
   mapPoints          TreatmentMapPoint[]
   productUsages      TreatmentProductUsage[]
   inventoryMovements InventoryMovement[]
+  photos             TreatmentPhoto[]
+}
+
+enum PhotoType {
+  BEFORE
+  AFTER
+}
+
+// Öncesi/sonrası fotoğraf albümü — bir tedavide birden fazla fotoğraf
+// olabilsin diye (eski tekli beforePhotoUrl/afterPhotoUrl yerine).
+model TreatmentPhoto {
+  id          String    @id @default(uuid())
+  treatmentId String
+  treatment   Treatment @relation(fields: [treatmentId], references: [id], onDelete: Cascade)
+  url         String
+  type        PhotoType
+  createdAt   DateTime  @default(now())
 }
 
 enum ProductUnit {
