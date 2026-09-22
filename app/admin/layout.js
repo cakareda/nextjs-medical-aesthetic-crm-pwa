@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Inter } from 'next/font/google';
@@ -66,9 +67,29 @@ const IconLogOut = () => (
   </svg>
 );
 
+const IconMenu = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="3" y1="12" x2="21" y2="12"></line>
+    <line x1="3" y1="6" x2="21" y2="6"></line>
+    <line x1="3" y1="18" x2="21" y2="18"></line>
+  </svg>
+);
+
+const IconX = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
+  </svg>
+);
+
 export default function AdminLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   const handleLogout = async () => {
     if (!confirm('Oturumu kapatmak istediğinize emin misiniz?')) return;
@@ -92,8 +113,56 @@ export default function AdminLayout({ children }) {
   return (
     <div className={inter.variable} style={{ display: 'flex', minHeight: '100vh', background: T.bg, fontFamily: sans }}>
 
+      {/* MOBİL ÜST BAR */}
+      <div
+        className="admin-topbar"
+        style={{
+          display: 'none',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          position: 'sticky',
+          top: 0,
+          zIndex: 30,
+          background: T.bg,
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          padding: '12px 16px',
+        }}
+      >
+        <img src="/logo-light.png" alt="Novantis" style={{ height: 36, width: 'auto' }} />
+        <button
+          onClick={() => setMobileOpen(true)}
+          aria-label="Menüyü aç"
+          style={{
+            background: 'transparent',
+            border: '1px solid rgba(255,255,255,0.15)',
+            borderRadius: 6,
+            padding: 8,
+            color: '#fff',
+            display: 'flex',
+            cursor: 'pointer',
+          }}
+        >
+          <IconMenu />
+        </button>
+      </div>
+
+      {/* MOBİL OVERLAY */}
+      {mobileOpen && (
+        <div
+          onClick={() => setMobileOpen(false)}
+          className="admin-overlay"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 40,
+          }}
+        />
+      )}
+
       {/* SOL SABİT SIDEBAR */}
       <aside
+        className={`admin-sidebar${mobileOpen ? ' admin-sidebar-open' : ''}`}
         style={{
           width: 240,
           background: T.bg,
@@ -107,12 +176,30 @@ export default function AdminLayout({ children }) {
           height: '100vh',
           boxSizing: 'border-box',
           flexShrink: 0,
+          zIndex: 50,
         }}
       >
         <div>
           {/* LOGO & BAŞLIK */}
-          <div style={{ padding: '0 8px 20px 8px', borderBottom: '1px solid rgba(255,255,255,0.1)', textAlign: 'center' }}>
+          <div style={{ padding: '0 8px 20px 8px', borderBottom: '1px solid rgba(255,255,255,0.1)', textAlign: 'center', position: 'relative' }}>
             <img src="/logo-light.png" alt="Novantis" style={{ height: 76, width: 'auto', margin: '0 auto', display: 'block' }} />
+            <button
+              onClick={() => setMobileOpen(false)}
+              aria-label="Menüyü kapat"
+              className="admin-sidebar-close"
+              style={{
+                display: 'none',
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                background: 'transparent',
+                border: 'none',
+                color: 'rgba(255,255,255,0.7)',
+                cursor: 'pointer',
+              }}
+            >
+              <IconX />
+            </button>
           </div>
 
           {/* MENÜ LİSTESİ */}
@@ -175,9 +262,41 @@ export default function AdminLayout({ children }) {
       </aside>
 
       {/* SAĞ ANA İÇERİK */}
-      <main style={{ flex: 1, padding: '32px 40px', overflowY: 'auto', background: T.cream }}>
+      <main className="admin-main" style={{ flex: 1, padding: '32px 40px', overflowY: 'auto', background: T.cream, minWidth: 0 }}>
         {children}
       </main>
+
+      <style jsx>{`
+        @media (max-width: 900px) {
+          .admin-topbar {
+            display: flex !important;
+            position: fixed !important;
+            left: 0;
+            right: 0;
+            width: 100%;
+            box-sizing: border-box;
+          }
+          .admin-sidebar {
+            position: fixed !important;
+            left: 0;
+            top: 0;
+            transform: translateX(-100%);
+            transition: transform 0.2s ease;
+            box-shadow: 4px 0 24px rgba(0,0,0,0.35);
+          }
+          .admin-sidebar-open {
+            transform: translateX(0);
+          }
+          .admin-sidebar-close {
+            display: flex !important;
+          }
+          .admin-main {
+            padding: 20px !important;
+            margin-top: 61px;
+            width: 100%;
+          }
+        }
+      `}</style>
 
     </div>
   );

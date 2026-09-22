@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getColorIdForType, getColorIdForStatus } from '@/lib/appointment-colors';
 import { createGoogleEvent, updateGoogleEvent, deleteGoogleEvent, renewWatchIfNeeded, getRequestOrigin } from '@/lib/google-calendar';
+import { parseIstanbulDateTime } from '@/lib/date-utils';
 
 const VALID_STATUSES = ['PENDING', 'ATTENDED', 'NO_SHOW', 'CANCELED'];
 
@@ -36,7 +37,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Hasta, başlık ve tarih zorunludur' }, { status: 400 });
     }
 
-    const parsedDate = new Date(date);
+    const parsedDate = parseIstanbulDateTime(date);
     if (isNaN(parsedDate.getTime())) {
       return NextResponse.json({ error: 'Geçersiz tarih formatı' }, { status: 400 });
     }
@@ -95,7 +96,7 @@ export async function PATCH(request) {
     }
 
     if (date !== undefined) {
-      const parsedDate = new Date(date);
+      const parsedDate = parseIstanbulDateTime(date);
       if (isNaN(parsedDate.getTime())) {
         return NextResponse.json({ error: 'Geçersiz tarih formatı' }, { status: 400 });
       }
