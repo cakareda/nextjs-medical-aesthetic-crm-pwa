@@ -21,19 +21,29 @@ const IconChevronLeft = () => <svg width="16" height="16" viewBox="0 0 24 24" fi
 const IconChevronRight = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>;
 const IconSearch = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>;
 
+// `d.getHours()`/`getFullYear()` vb. tarayıcının kendi sistem saat dilimini
+// kullanır — kullanıcının cihazı İstanbul'a ayarlı değilse randevu saatleri
+// (sunucuda doğru kaydedilmiş olsa bile) burada yanlış saatte görünür. Bu
+// yüzden randevu zaman damgalarını her zaman sabit Europe/Istanbul saat
+// dilimiyle biçimlendiriyoruz — sadece hastane tek bir saat diliminde
+// çalıştığı için bu, cihaz ayarından bağımsız tek doğru davranış.
 const getLocalDateString = (dateObj) => {
   const d = new Date(dateObj);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Istanbul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
 };
 
 const getLocalTimeString = (dateObj) => {
   const d = new Date(dateObj);
-  const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  return `${hours}:${minutes}`;
+  return new Intl.DateTimeFormat('tr-TR', {
+    timeZone: 'Europe/Istanbul',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(d);
 };
 
 const getMatchedSlot = (exactTimeStr, timeSlots) => {
