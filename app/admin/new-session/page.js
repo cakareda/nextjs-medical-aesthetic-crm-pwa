@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import QRCode from 'qrcode';
 import PhoneInput from '@/components/PhoneInput';
-import { ML_QUANTITY_OPTIONS, UNIT_LABELS } from '@/lib/quantity-options';
 import { T } from '@/lib/theme';
 
 const TEMPLATES = [
@@ -36,15 +35,6 @@ export default function NewSessionPage() {
   const [isTreatmentTypeDropdownOpen, setIsTreatmentTypeDropdownOpen] = useState(false);
   const treatmentTypeWrapperRef = useRef(null);
 
-  // ─── ÜRÜN KULLANIMI ───
-  const [products, setProducts] = useState([]);
-  const [productUsages, setProductUsages] = useState([]); // {productId, name, unit, quantity}
-  const [productSearch, setProductSearch] = useState('');
-  const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
-  const [pendingProduct, setPendingProduct] = useState(null);
-  const [pendingQuantity, setPendingQuantity] = useState('0.5');
-  const productSearchWrapperRef = useRef(null);
-
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [sessionResult, setSessionResult] = useState(null);
@@ -54,11 +44,6 @@ export default function NewSessionPage() {
     fetch('/api/patients')
       .then((r) => r.json())
       .then((data) => setPatients(Array.isArray(data) ? data : []))
-      .catch((err) => console.error(err));
-
-    fetch('/api/inventory/products')
-      .then((r) => r.json())
-      .then((data) => setProducts(Array.isArray(data) ? data : []))
       .catch((err) => console.error(err));
 
     fetch('/api/treatments/types')
@@ -71,9 +56,6 @@ export default function NewSessionPage() {
     function handleClickOutside(e) {
       if (searchWrapperRef.current && !searchWrapperRef.current.contains(e.target)) {
         setIsDropdownOpen(false);
-      }
-      if (productSearchWrapperRef.current && !productSearchWrapperRef.current.contains(e.target)) {
-        setIsProductDropdownOpen(false);
       }
       if (treatmentTypeWrapperRef.current && !treatmentTypeWrapperRef.current.contains(e.target)) {
         setIsTreatmentTypeDropdownOpen(false);
@@ -90,10 +72,6 @@ export default function NewSessionPage() {
       )
     : patients.slice(0, 8);
 
-  const filteredProducts = productSearch
-    ? products.filter((p) => p.name.toLowerCase().includes(productSearch.toLowerCase()))
-    : products.slice(0, 8);
-
   const filteredTreatmentTypes = form.treatmentType
     ? treatmentTypeOptions.filter((t) =>
         t.toLowerCase().includes(form.treatmentType.toLowerCase())
@@ -104,38 +82,6 @@ export default function NewSessionPage() {
     setSelectedPatientObj(p);
     setForm((prev) => ({ ...prev, patientName: p.fullName, phone: p.phone || '' }));
     setIsDropdownOpen(false);
-  };
-
-  const handleSelectProduct = (p) => {
-    setPendingProduct(p);
-    setProductSearch(p.name);
-    setIsProductDropdownOpen(false);
-    setPendingQuantity(p.unit === 'ML' ? '0.5' : '1');
-  };
-
-  const handleAddProductUsage = () => {
-    if (!pendingProduct) {
-      alert('Lütfen önce bir ürün seçin.');
-      return;
-    }
-    const qty = Number(pendingQuantity);
-    if (!Number.isFinite(qty) || qty <= 0) {
-      alert('Geçerli bir miktar girin.');
-      return;
-    }
-
-    setProductUsages((prev) => [
-      ...prev,
-      { productId: pendingProduct.id, name: pendingProduct.name, unit: pendingProduct.unit, quantity: qty },
-    ]);
-
-    setPendingProduct(null);
-    setProductSearch('');
-    setPendingQuantity('0.5');
-  };
-
-  const handleRemoveProductUsage = (index) => {
-    setProductUsages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleReset = () => {
@@ -151,10 +97,6 @@ export default function NewSessionPage() {
     setSelectedPatientObj(null);
     setPatientSearch('');
     setIsNewPatientMode(false);
-    setProductUsages([]);
-    setPendingProduct(null);
-    setProductSearch('');
-    setPendingQuantity('0.5');
     setSessionResult(null);
     setQrDataUrl('');
     setErrorMsg('');
@@ -183,10 +125,7 @@ export default function NewSessionPage() {
       const res = await fetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          productUsages: productUsages.map((u) => ({ productId: u.productId, quantity: u.quantity })),
-        }),
+        body: JSON.stringify(form),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Oturum oluşturulamadı');
@@ -364,7 +303,7 @@ export default function NewSessionPage() {
 
         <div>
           <label style={{ fontSize: 11, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>Ek Not / Marka (opsiyonel)</label>
-          <input value={form.productBrand} onChange={(e) => setForm({ ...form, productBrand: e.target.value })} placeholder="Aşağıda envanterden ürün seçebilirsiniz" style={{ width: '100%', padding: '9px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box' }} />
+          <input value={form.productBrand} onChange={(e) => setForm({ ...form, productBrand: e.target.value })} style={{ width: '100%', padding: '9px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box' }} />
         </div>
 
         <div>
@@ -377,81 +316,8 @@ export default function NewSessionPage() {
         </div>
         </div>
 
-        {/* SAĞ SÜTUN: ÜRÜN / FİYAT HESAPLAMA */}
+        {/* SAĞ SÜTUN: FİYAT */}
         <div style={{ background: T.white, border: `1px solid ${T.purple}30`, borderRadius: 16, padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-        {/* ─── ÜRÜN KULLANIMI (mini sepet) ─── */}
-        <div style={{ border: `1px solid ${T.purple}30`, borderRadius: 12, padding: 14, background: T.cream }}>
-          <label style={{ fontSize: 11, fontWeight: 700, color: T.purpleDark, display: 'block', marginBottom: 8 }}>Kullanılan Ürün(ler) — Sepet</label>
-
-          {productUsages.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-              {productUsages.map((u, idx) => (
-                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '6px 10px' }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>
-                    {u.name} — {u.quantity} {UNIT_LABELS[u.unit] || u.unit}
-                  </span>
-                  <button type="button" onClick={() => handleRemoveProductUsage(idx)} style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                    Kaldır
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative', flex: '1 1 200px' }} ref={productSearchWrapperRef}>
-              <input
-                type="text"
-                placeholder="Ürün ara..."
-                value={productSearch}
-                onChange={(e) => { setProductSearch(e.target.value); setPendingProduct(null); setIsProductDropdownOpen(true); }}
-                onFocus={() => setIsProductDropdownOpen(true)}
-                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 12, boxSizing: 'border-box' }}
-              />
-              {isProductDropdownOpen && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: 6, marginTop: 4, maxHeight: 180, overflowY: 'auto', zIndex: 50 }}>
-                  {filteredProducts.length === 0 ? (
-                    <div style={{ padding: 10, fontSize: 12, color: '#94a3b8', textAlign: 'center' }}>Ürün bulunamadı</div>
-                  ) : (
-                    filteredProducts.map((p) => (
-                      <div key={p.id} onClick={() => handleSelectProduct(p)} style={{ padding: '8px 12px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', fontSize: 12, display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontWeight: 600, color: '#0f172a' }}>{p.name}</span>
-                        <span style={{ fontSize: 11, color: '#64748b' }}>{p.stockQuantity} {UNIT_LABELS[p.unit] || p.unit}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
-
-            {pendingProduct?.unit === 'ML' ? (
-              <select value={pendingQuantity} onChange={(e) => setPendingQuantity(e.target.value)} style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 12 }}>
-                {ML_QUANTITY_OPTIONS.map((v) => (
-                  <option key={v} value={v}>{v} ml</option>
-                ))}
-              </select>
-            ) : (
-              <input
-                type="number"
-                min="1"
-                step="1"
-                value={pendingQuantity}
-                onChange={(e) => setPendingQuantity(e.target.value)}
-                placeholder="Miktar"
-                style={{ width: 90, padding: '8px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 12, boxSizing: 'border-box' }}
-              />
-            )}
-
-            <button
-              type="button"
-              onClick={handleAddProductUsage}
-              style={{ background: '#4A2859', color: '#C9A45C', border: 'none', padding: '8px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-            >
-              Ekle
-            </button>
-          </div>
-        </div>
 
         <div style={{ display: 'flex', gap: 10 }}>
           <div style={{ flex: 1 }}>

@@ -4,8 +4,6 @@ import { createOAuthClient, getRequestOrigin } from '@/lib/google-calendar';
 
 const SCOPES = ['https://www.googleapis.com/auth/calendar.events'];
 
-// Bu route zaten proxy.js'in genel /api/:path* korumasından geçiyor (admin
-// oturumu gerekli) — publicApiRoutes listesine eklenmemeli.
 export async function GET(request) {
   const state = crypto.randomBytes(24).toString('hex');
   const redirectUri = `${getRequestOrigin(request)}/api/auth/google/callback`;
@@ -13,7 +11,7 @@ export async function GET(request) {
   const oauth2Client = createOAuthClient(redirectUri);
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
-    prompt: 'consent', // refresh_token'ın her zaman dönmesini garantiler.
+    prompt: 'consent', 
     scope: SCOPES,
     state,
   });
@@ -23,7 +21,7 @@ export async function GET(request) {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 60 * 10, // 10 dakika
+    maxAge: 60 * 10,
     path: '/',
   });
 

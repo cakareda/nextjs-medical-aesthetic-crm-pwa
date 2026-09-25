@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { prisma } from '@/lib/prisma';
+import { deleteGoogleEvent } from '@/lib/google-calendar';
 
 function normalizePhone(value) {
   if (value === null || value === undefined) {
@@ -341,7 +342,7 @@ export async function DELETE(request, context) {
       },
       select: {
         id: true,
-        isActive: true,
+        appointments: { select: { googleEventId: true } },
       },
     });
 
@@ -356,32 +357,35 @@ export async function DELETE(request, context) {
       );
     }
 
-    if (!patient.isActive) {
-      return NextResponse.json({
-        success: true,
-        archived: true,
-      });
+    // Randevular veritabanından cascade ile silinecek, ama karşılık gelen
+    // Google Takvim etkinliği silinmezse bir sonraki senkronda "yeni" bir
+    // etkinlik olarak algılanıp hastasız bir randevu şeklinde geri gelir.
+    // Bu yüzden önce Google tarafını temizliyoruz (best-effort — biri
+    // başarısız olursa hasta silme işlemini engellemez).
+    for (const appt of patient.appointments) {
+      if (!appt.googleEventId) continue;
+      try {
+        await deleteGoogleEvent(appt.googleEventId);
+      } catch (err) {
+        console.error('Google Takvim etkinliği silinemedi:', err);
+      }
     }
 
-    await prisma.patient.update({
-      where: {
-        id,
-      },
-      data: {
-        isActive: false,
-      },
-    });
+    // Nurlana'nın isteği üzerine: hasta silindiğinde gerçekten kalıcı olarak
+    // silinsin (arşivleme değil). Treatment/PatientDocument/Appointment
+    // kayıtları schema'daki onDelete: Cascade ile otomatik silinir.
+    await prisma.patient.delete({ where: { id } });
 
     return NextResponse.json({
       success: true,
-      archived: true,
+      deleted: true,
     });
   } catch (error) {
-    console.error('Hasta arşivleme API hatası:', error);
+    console.error('Hasta silme API hatası:', error);
 
     return NextResponse.json(
       {
-        error: 'Hasta arşivlenemedi.',
+        error: 'Hasta silinemedi.',
       },
       {
         status: 500,

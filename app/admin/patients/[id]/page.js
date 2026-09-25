@@ -116,15 +116,15 @@ export default function PatientDetailPage() {
     }
   };
 
-  const handleArchivePatient = async () => {
-    if (!confirm('Bu hastayı arşivlemek istediğinize emin misiniz? Geçmiş kayıtlar silinmez, sadece listeden gizlenir.')) return;
+  const handleDeletePatient = async () => {
+    if (!confirm('Bu hastayı ve tüm işlem/onam/randevu geçmişini KALICI OLARAK SİLMEK istediğinize emin misiniz? Bu işlem geri alınamaz.')) return;
     try {
       const res = await fetch(`/api/patients/${id}`, { method: 'DELETE' });
       const data = await res.json();
-      if (!res.ok) return alert(data.error || 'Arşivlenemedi');
+      if (!res.ok) return alert(data.error || 'Hasta silinemedi');
       router.push('/admin/patients');
     } catch (err) {
-      alert('Arşivlenemedi: ' + err.message);
+      alert('Hasta silinemedi: ' + err.message);
     }
   };
 
@@ -366,8 +366,8 @@ export default function PatientDetailPage() {
             <button onClick={() => setShowAddAppointment(!showAddAppointment)} style={btnStyle(T.purpleDark, T.gold)}>
               Randevu Oluştur
             </button>
-            <button onClick={handleArchivePatient} style={btnStyle(T.error, '#5A2030')}>
-              Arşivle
+            <button onClick={handleDeletePatient} style={btnStyle(T.error, '#5A2030')}>
+              Hastayı Sil
             </button>
           </div>
         </div>
