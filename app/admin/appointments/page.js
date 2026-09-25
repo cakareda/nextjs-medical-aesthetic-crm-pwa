@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef, Fragment } from 'react';
 import Link from 'next/link';
 import PhoneInput from '@/components/PhoneInput';
 import { buildWhatsAppUrl } from '@/lib/phone-utils';
@@ -77,6 +77,7 @@ export default function AppointmentsPage() {
   const [selectedDate, setSelectedDate] = useState(() => getLocalDateString(new Date()));
   const [currentMonthDate, setCurrentMonthDate] = useState(() => new Date());
   const [selectedTime, setSelectedTime] = useState('10:00');
+  const [viewMode, setViewMode] = useState('day'); // 'day' | 'week'
 
   const [patientSearch, setPatientSearch] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -217,6 +218,40 @@ export default function AppointmentsPage() {
     });
   }, [appointments, selectedDate]);
 
+  // Haftalık görünüm: seçili günü içeren Pazartesi-Pazar aralığı.
+  const weekDates = useMemo(() => {
+    const base = new Date(`${selectedDate}T00:00:00`);
+    let dayOfWeek = base.getDay() - 1;
+    if (dayOfWeek === -1) dayOfWeek = 6;
+
+    const monday = new Date(base);
+    monday.setDate(base.getDate() - dayOfWeek);
+
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      return { dateStr: getLocalDateString(d), dayNumber: d.getDate(), weekdayLabel: d.toLocaleDateString('tr-TR', { weekday: 'short' }) };
+    });
+  }, [selectedDate]);
+
+  // { [dateStr]: { [slotTime]: [randevu, ...] } } — gün görünümündeki
+  // slotMap'in haftalık karşılığı, her gün için ayrı bucket'lanır.
+  const weekSlotMap = useMemo(() => {
+    const map = {};
+    weekDates.forEach(({ dateStr }) => {
+      map[dateStr] = {};
+      const dayApps = appointmentsByDateMap[dateStr] || [];
+      dayApps.forEach((app) => {
+        const exactTimeStr = getLocalTimeString(app.date);
+        const matchedSlot = getMatchedSlot(exactTimeStr, timeSlots);
+        if (!matchedSlot) return;
+        if (!map[dateStr][matchedSlot]) map[dateStr][matchedSlot] = [];
+        map[dateStr][matchedSlot].push({ ...app, exactTimeStr });
+      });
+    });
+    return map;
+  }, [weekDates, appointmentsByDateMap, timeSlots]);
+
   const slotMap = useMemo(() => {
     const map = {};
     dayAppointments.forEach((app) => {
@@ -315,13 +350,7 @@ export default function AppointmentsPage() {
   const [draggedAppId, setDraggedAppId] = useState(null);
   const [dragOverSlot, setDragOverSlot] = useState(null);
 
-  const handleDropOnSlot = async (targetSlotTime) => {
-    const appId = draggedAppId;
-    setDraggedAppId(null);
-    setDragOverSlot(null);
-    if (!appId) return;
-
-    const newDateTimeStr = `${selectedDate}T${targetSlotTime}:00`;
+  const moveAppointment = async (appId, newDateTimeStr) => {
     try {
       const res = await fetch(`/api/appointments?id=${appId}`, {
         method: 'PATCH',
@@ -333,6 +362,18 @@ export default function AppointmentsPage() {
     } catch (err) {
       alert('Randevu taşınamadı: ' + err.message);
     }
+  };
+
+  // `dayStr` verilmezse (gün görünümü) o an seçili günü kullanır — haftalık
+  // görünümde ise sürüklenen hücrenin ait olduğu gün verilir.
+  const handleDropOnSlot = async (targetSlotTime, dayStr) => {
+    const appId = draggedAppId;
+    setDraggedAppId(null);
+    setDragOverSlot(null);
+    if (!appId) return;
+
+    const newDateTimeStr = `${dayStr || selectedDate}T${targetSlotTime}:00`;
+    await moveAppointment(appId, newDateTimeStr);
   };
 
   const openWhatsApp = (phone, patientName, dateStr, title) => {
@@ -449,16 +490,108 @@ export default function AppointmentsPage() {
         </div>
       </div>
 
-        {/* GÜN ÇİZELGESİ (agenda-grid'in 2. sütunu) */}
+        {/* GÜN/HAFTA ÇİZELGESİ (agenda-grid'in 2. sütunu) */}
         <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 12, padding: 18 }}>
-          <h3 style={{ margin: '0 0 14px 0', fontSize: 15, fontWeight: '700', color: '#0f172a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ margin: '0 0 14px 0', fontSize: 15, fontWeight: '700', color: '#0f172a', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <IconClock /> {new Date(`${selectedDate}T00:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' })}
+              <IconClock />
+              {viewMode === 'day'
+                ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' })
+                : `${weekDates[0].dayNumber} - ${weekDates[6].dayNumber} ${new Date(`${weekDates[6].dateStr}T00:00:00`).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })}`}
             </span>
+            <button
+              type="button"
+              onClick={() => setViewMode((v) => (v === 'day' ? 'week' : 'day'))}
+              style={{ background: viewMode === 'week' ? T.purpleDark : '#f1f5f9', color: viewMode === 'week' ? T.gold : '#334155', border: 'none', padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: '700', cursor: 'pointer' }}
+            >
+              {viewMode === 'day' ? 'Haftalık Görünüme Geç' : 'Günlük Görünüme Dön'}
+            </button>
           </h3>
 
           {loading ? (
             <div style={{ color: '#64748b', fontSize: 13, padding: '20px 0' }}>Yükleniyor...</div>
+          ) : viewMode === 'week' ? (
+            <div style={{ overflowX: 'auto' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `56px repeat(7, minmax(110px, 1fr))`, gap: 4, minWidth: 850 }}>
+                <div />
+                {weekDates.map(({ dateStr, dayNumber, weekdayLabel }) => (
+                  <div
+                    key={dateStr}
+                    onClick={() => { setSelectedDate(dateStr); setViewMode('day'); }}
+                    style={{
+                      textAlign: 'center',
+                      padding: '4px 2px',
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                      background: dateStr === getLocalDateString(new Date()) ? '#FBF3E3' : 'transparent',
+                    }}
+                  >
+                    <div style={{ fontSize: 10, fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase' }}>{weekdayLabel}</div>
+                    <div style={{ fontSize: 13, fontWeight: '800', color: T.bg }}>{dayNumber}</div>
+                  </div>
+                ))}
+
+                {timeSlots.map((slotTime) => (
+                  <Fragment key={slotTime}>
+                    <div style={{ fontSize: 11, fontWeight: '700', color: '#94a3b8', textAlign: 'right', paddingRight: 4, paddingTop: 4 }}>
+                      {slotTime}
+                    </div>
+                    {weekDates.map(({ dateStr }) => {
+                      const occupiedApps = weekSlotMap[dateStr]?.[slotTime] || [];
+                      const cellKey = `${dateStr}-${slotTime}`;
+                      const isDragOver = dragOverSlot === cellKey;
+
+                      return (
+                        <div
+                          key={cellKey}
+                          onDragOver={(e) => { e.preventDefault(); setDragOverSlot(cellKey); }}
+                          onDragLeave={() => setDragOverSlot((cur) => (cur === cellKey ? null : cur))}
+                          onDrop={(e) => { e.preventDefault(); handleDropOnSlot(slotTime, dateStr); }}
+                          style={{
+                            minHeight: 30,
+                            border: isDragOver ? `2px dashed ${T.gold}` : '1px solid #f1f5f9',
+                            borderRadius: 4,
+                            background: isDragOver ? '#FFF8E7' : occupiedApps.length > 0 ? '#fef2f2' : '#ffffff',
+                            padding: 2,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 2,
+                          }}
+                        >
+                          {occupiedApps.map((occupiedApp) => (
+                            <div
+                              key={occupiedApp.id}
+                              draggable
+                              onDragStart={(e) => { e.stopPropagation(); setDraggedAppId(occupiedApp.id); }}
+                              onDragEnd={() => setDraggedAppId(null)}
+                              onClick={() => { setSelectedDate(dateStr); setViewMode('day'); }}
+                              title={`${occupiedApp.exactTimeStr} — ${occupiedApp.title} — ${occupiedApp.patient?.fullName || 'Hasta atanmadı'}`}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 3,
+                                background: '#ffffff',
+                                border: '1px solid #fecdd3',
+                                borderRadius: 4,
+                                padding: '2px 4px',
+                                cursor: 'grab',
+                                opacity: draggedAppId === occupiedApp.id ? 0.5 : 1,
+                                overflow: 'hidden',
+                              }}
+                            >
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: getColorHex(occupiedApp.colorId), flexShrink: 0 }} />
+                              <span style={{ fontSize: 10, fontWeight: '700', color: '#991b1b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {occupiedApp.patient?.fullName || occupiedApp.title}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </Fragment>
+                ))}
+              </div>
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {timeSlots.map((slotTime) => {
