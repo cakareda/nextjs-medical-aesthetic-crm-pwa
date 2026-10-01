@@ -1,580 +1,785 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef, Fragment } from 'react';
 import Link from 'next/link';
-import { Inter, Playfair_Display } from 'next/font/google';
-import { T } from '@/lib/theme';
+import PhoneInput from '@/components/PhoneInput';
 import { buildWhatsAppUrl } from '@/lib/phone-utils';
+import { T } from '@/lib/theme';
+import { getColorHex } from '@/lib/appointment-colors';
+import { APPOINTMENT_PROCEDURE_OPTIONS, buildAppointmentTitle } from '@/lib/appointment-categories';
+import Drawer from '@/components/Drawer';
 
-const inter = Inter({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-inter',
-});
+const IconCalendar = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>;
+const IconClock = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>;
+const IconUserPlus = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>;
+const IconPlus = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+const IconTrash = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>;
+const IconWhatsApp = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.868-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12.001 2C6.478 2 2 6.478 2 12c0 1.822.487 3.55 1.338 5.031L2.06 21.879a.75.75 0 0 0 .92.92l4.907-1.267A9.949 9.949 0 0 0 12.001 22C17.523 22 22 17.522 22 12S17.523 2 12.001 2zm0 18.18a8.14 8.14 0 0 1-4.15-1.136.75.75 0 0 0-.55-.082l-3.027.782.792-2.977a.75.75 0 0 0-.088-.566A8.147 8.147 0 0 1 3.82 12c0-4.511 3.67-8.18 8.181-8.18 4.511 0 8.18 3.669 8.18 8.18 0 4.511-3.669 8.18-8.18 8.18z"/></svg>;
+const IconChevronLeft = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>;
+const IconChevronRight = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>;
+const IconSearch = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>;
 
-const playfair = Playfair_Display({
-  subsets: ['latin'],
-  weight: ['600', '700'],
-  variable: '--font-playfair',
-});
-
-const sans = 'var(--font-inter), sans-serif';
-const serif = 'var(--font-playfair), Georgia, serif';
-
-function getIstanbulDateString(dateInput = new Date()) {
-  const date = new Date(dateInput);
-  if (Number.isNaN(date.getTime())) return '';
+const getLocalDateString = (dateObj) => {
+  const d = new Date(dateObj);
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Istanbul',
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).format(date);
-}
+  }).format(d);
+};
 
-function getIstanbulTime(dateInput) {
-  const date = new Date(dateInput);
-  if (Number.isNaN(date.getTime())) return '—';
+const getLocalTimeString = (dateObj) => {
+  const d = new Date(dateObj);
   return new Intl.DateTimeFormat('tr-TR', {
     timeZone: 'Europe/Istanbul',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(date);
-}
+  }).format(d);
+};
 
-function getTomorrowDateString() {
-  const now = new Date();
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Europe/Istanbul',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(now);
+const getMatchedSlot = (exactTimeStr, timeSlots) => {
+  if (!exactTimeStr) return null;
+  if (timeSlots.includes(exactTimeStr)) return exactTimeStr;
 
-  const year = Number(parts.find((part) => part.type === 'year')?.value);
-  const month = Number(parts.find((part) => part.type === 'month')?.value);
-  const day = Number(parts.find((part) => part.type === 'day')?.value);
+  const [h, m] = exactTimeStr.split(':').map(Number);
+  const totalMin = h * 60 + m;
 
-  const tomorrow = new Date(Date.UTC(year, month - 1, day + 1));
-  return tomorrow.toISOString().slice(0, 10);
-}
+  let closestSlot = timeSlots[0];
+  let minDiff = Infinity;
 
-function getApiArray(data) {
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.patients)) return data.patients;
-  if (Array.isArray(data?.appointments)) return data.appointments;
-  if (Array.isArray(data?.notes)) return data.notes;
-  return [];
-}
-
-export default function AdminDashboardPage() {
-  const todayStr = getIstanbulDateString();
-
-  const [stats, setStats] = useState({
-    totalPatients: 0,
-    todayAppointmentsCount: 0,
-    pendingTouchUpsCount: 0,
+  timeSlots.forEach((slot) => {
+    const [sh, sm] = slot.split(':').map(Number);
+    const slotMin = sh * 60 + sm;
+    const diff = Math.abs(totalMin - slotMin);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closestSlot = slot;
+    }
   });
 
-  const [todayAppointments, setTodayAppointments] = useState([]);
-  const [tomorrowAppointments, setTomorrowAppointments] = useState([]);
+  return closestSlot;
+};
+
+export default function AdminDashboardPage() {
+  const [appointments, setAppointments] = useState([]);
+  const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [selectedNoteDate, setSelectedNoteDate] = useState(todayStr);
-  const [noteContent, setNoteContent] = useState('');
-  const [noteSaving, setNoteSaving] = useState(false);
-  const [pastNotesList, setPastNotesList] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(() => getLocalDateString(new Date()));
+  const [currentMonthDate, setCurrentMonthDate] = useState(() => new Date());
+  const [selectedTime, setSelectedTime] = useState('10:00');
+  const [showDayDrawer, setShowDayDrawer] = useState(false);
+
+  const [patientSearch, setPatientSearch] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedPatientObj, setSelectedPatientObj] = useState(null);
+
+  const searchWrapperRef = useRef(null);
+
+  const [newApp, setNewApp] = useState({
+    patientId: '',
+    title: 'İlk Muayene / Tanışma',
+    type: 'INITIAL',
+    notes: '',
+  });
+
+  const [isNewPatientMode, setIsNewPatientMode] = useState(false);
+  const [quickPatient, setQuickPatient] = useState({ fullName: '', phone: '' });
+
+  const [products, setProducts] = useState([]);
+  const [selectedProductId, setSelectedProductId] = useState('');
+
+  const [googleConnected, setGoogleConnected] = useState(null);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function fetchDashboardData() {
-      setLoading(true);
-      try {
-        const [patRes, appRes, notesRes] = await Promise.all([
-          fetch('/api/patients', { cache: 'no-store' }),
-          fetch('/api/appointments', { cache: 'no-store' }),
-          fetch('/api/daily-notes', { cache: 'no-store' }),
-        ]);
-
-        const [patientsData, appointmentsData, notesData] = await Promise.all([
-          patRes.json(),
-          appRes.json(),
-          notesRes.json(),
-        ]);
-
-        if (!patRes.ok) throw new Error(patientsData?.error || 'Hasta verileri alınamadı.');
-        if (!appRes.ok) throw new Error(appointmentsData?.error || 'Randevu verileri alınamadı.');
-        if (!notesRes.ok) throw new Error(notesData?.error || 'Günün notları alınamadı.');
-
-        if (cancelled) return;
-
-        const patients = getApiArray(patientsData);
-        const appointments = getApiArray(appointmentsData);
-        const notesList = getApiArray(notesData);
-
-        setPastNotesList(notesList);
-
-        const tomorrowStr = getTomorrowDateString();
-
-        const activeAppointments = appointments.filter(
-          (appointment) => appointment?.date && appointment.status !== 'CANCELED'
-        );
-
-        const todayApps = activeAppointments.filter(
-          (appointment) => getIstanbulDateString(appointment.date) === todayStr
-        );
-
-        const tomorrowApps = activeAppointments.filter(
-          (appointment) => getIstanbulDateString(appointment.date) === tomorrowStr
-        );
-
-        let touchUpCount = 0;
-        patients.forEach((patient) => {
-          if (!Array.isArray(patient?.treatments)) return;
-          patient.treatments.forEach((treatment) => {
-            if (treatment?.touchUpStatus === 'PENDING') touchUpCount += 1;
-          });
-        });
-
-        setStats({
-          totalPatients: patients.length,
-          todayAppointmentsCount: todayApps.length,
-          pendingTouchUpsCount: touchUpCount,
-        });
-
-        setTodayAppointments(todayApps);
-        setTomorrowAppointments(tomorrowApps);
-      } catch (err) {
-        if (!cancelled) console.error('Dashboard veri hatası:', err);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    fetchDashboardData();
-    return () => { cancelled = true; };
-  }, [todayStr]);
+    fetch('/api/auth/google/status')
+      .then((r) => r.json())
+      .then((data) => setGoogleConnected(Boolean(data.connected)))
+      .catch(() => setGoogleConnected(false));
+  }, []);
 
   useEffect(() => {
-    if (!selectedNoteDate) {
-      setNoteContent('');
-      return;
-    }
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('google_error');
+    const connected = params.get('google');
+    if (error) alert('Google Takvim bağlanamadı: ' + error);
+    if (connected === 'connected') alert('Google Takvim başarıyla bağlandı.');
+    if (error || connected) window.history.replaceState({}, '', window.location.pathname);
+  }, []);
 
-    let cancelled = false;
-
-    async function fetchSelectedNote() {
-      try {
-        const res = await fetch(`/api/daily-notes?date=${encodeURIComponent(selectedNoteDate)}`, { cache: 'no-store' });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.error || 'Not alınamadı.');
-        if (!cancelled) setNoteContent(data?.content || '');
-      } catch (err) {
-        if (!cancelled) {
-          console.error('Not getirme hatası:', err);
-          setNoteContent('');
-        }
-      }
-    }
-
-    fetchSelectedNote();
-    return () => { cancelled = true; };
-  }, [selectedNoteDate]);
-
-  const handleSaveNote = async () => {
-    if (!selectedNoteDate) return;
-    setNoteSaving(true);
+  const fetchData = useCallback(async () => {
     try {
-      const res = await fetch('/api/daily-notes', {
+      const [appRes, patRes, prodRes] = await Promise.all([
+        fetch('/api/appointments'),
+        fetch('/api/patients'),
+        fetch('/api/inventory/products'),
+      ]);
+      const appData = await appRes.json();
+      const patData = await patRes.json();
+
+      if (appRes.ok) setAppointments(appData);
+      if (patRes.ok) setPatients(patData);
+      if (prodRes.ok) setProducts(await prodRes.json());
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (searchWrapperRef.current && !searchWrapperRef.current.contains(e.target)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredPatients = useMemo(() => {
+    if (!patientSearch) return patients.slice(0, 8);
+    return patients.filter((p) =>
+      p.fullName.toLowerCase().includes(patientSearch.toLowerCase()) ||
+      (p.phone && p.phone.includes(patientSearch))
+    );
+  }, [patients, patientSearch]);
+
+  const timeSlots = useMemo(() => {
+    const slots = [];
+    for (let hour = 9; hour <= 20; hour++) {
+      const hStr = hour.toString().padStart(2, '0');
+      slots.push(`${hStr}:00`);
+      if (hour !== 20) slots.push(`${hStr}:30`);
+    }
+    return slots;
+  }, []);
+
+  const monthCalendarDays = useMemo(() => {
+    const year = currentMonthDate.getFullYear();
+    const month = currentMonthDate.getMonth();
+
+    const firstDayOfMonth = new Date(year, month, 1);
+    const lastDayOfMonth = new Date(year, month + 1, 0);
+
+    let startDayOfWeek = firstDayOfMonth.getDay() - 1;
+    if (startDayOfWeek === -1) startDayOfWeek = 6;
+
+    const days = [];
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+    for (let i = startDayOfWeek - 1; i >= 0; i--) {
+      const pDate = new Date(year, month - 1, prevMonthLastDay - i);
+      days.push({ dateStr: getLocalDateString(pDate), dayNumber: pDate.getDate(), isCurrentMonth: false });
+    }
+
+    for (let d = 1; d <= lastDayOfMonth.getDate(); d++) {
+      const cDate = new Date(year, month, d);
+      days.push({ dateStr: getLocalDateString(cDate), dayNumber: d, isCurrentMonth: true });
+    }
+
+    const totalCells = days.length > 35 ? 42 : 35;
+    const remaining = totalCells - days.length;
+    for (let i = 1; i <= remaining; i++) {
+      const nDate = new Date(year, month + 1, i);
+      days.push({ dateStr: getLocalDateString(nDate), dayNumber: i, isCurrentMonth: false });
+    }
+
+    return days;
+  }, [currentMonthDate]);
+
+  const appointmentsByDateMap = useMemo(() => {
+    const map = {};
+    appointments.forEach((app) => {
+      if (!app.date || app.status === 'CANCELED') return;
+      const dateStr = getLocalDateString(app.date);
+      if (!map[dateStr]) map[dateStr] = [];
+      map[dateStr].push(app);
+    });
+    return map;
+  }, [appointments]);
+
+  const dayAppointments = useMemo(() => {
+    return appointments.filter((app) => {
+      if (!app.date || app.status === 'CANCELED') return false;
+      return getLocalDateString(app.date) === selectedDate;
+    });
+  }, [appointments, selectedDate]);
+
+  const weekDates = useMemo(() => {
+    const base = new Date(`${selectedDate}T00:00:00`);
+    let dayOfWeek = base.getDay() - 1;
+    if (dayOfWeek === -1) dayOfWeek = 6;
+
+    const monday = new Date(base);
+    monday.setDate(base.getDate() - dayOfWeek);
+
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      return { dateStr: getLocalDateString(d), dayNumber: d.getDate(), weekdayLabel: d.toLocaleDateString('tr-TR', { weekday: 'short' }) };
+    });
+  }, [selectedDate]);
+
+  const weekSlotMap = useMemo(() => {
+    const map = {};
+    weekDates.forEach(({ dateStr }) => {
+      map[dateStr] = {};
+      const dayApps = appointmentsByDateMap[dateStr] || [];
+      dayApps.forEach((app) => {
+        const exactTimeStr = getLocalTimeString(app.date);
+        const matchedSlot = getMatchedSlot(exactTimeStr, timeSlots);
+        if (!matchedSlot) return;
+        if (!map[dateStr][matchedSlot]) map[dateStr][matchedSlot] = [];
+        map[dateStr][matchedSlot].push({ ...app, exactTimeStr });
+      });
+    });
+    return map;
+  }, [weekDates, appointmentsByDateMap, timeSlots]);
+
+  const slotMap = useMemo(() => {
+    const map = {};
+    dayAppointments.forEach((app) => {
+      const exactTimeStr = getLocalTimeString(app.date);
+      const matchedSlot = getMatchedSlot(exactTimeStr, timeSlots);
+      if (matchedSlot) {
+        if (!map[matchedSlot]) map[matchedSlot] = [];
+        map[matchedSlot].push({ ...app, exactTimeStr });
+      }
+    });
+    return map;
+  }, [dayAppointments, timeSlots]);
+
+  const handleCreateAppointment = async (e) => {
+    e.preventDefault();
+
+    const fullDateTimeStr = `${selectedDate}T${selectedTime}:00`;
+    let targetPatientId = newApp.patientId;
+
+    if (isNewPatientMode) {
+      if (!quickPatient.fullName || !quickPatient.phone) {
+        return alert('Lütfen yeni danışanın Ad Soyad ve Telefon bilgisini giriniz.');
+      }
+      try {
+        const createPatRes = await fetch('/api/patients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(quickPatient),
+        });
+
+        const createdPat = await createPatRes.json();
+        if (!createPatRes.ok) throw new Error(createdPat.error || 'Hasta eklenemedi.');
+        targetPatientId = createdPat.id;
+      } catch (err) {
+        return alert('Yeni danışan eklenirken hata: ' + err.message);
+      }
+    }
+
+    if (!targetPatientId) return alert('Lütfen bir hasta seçiniz.');
+
+    try {
+      const res = await fetch('/api/appointments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: selectedNoteDate, content: noteContent }),
+        body: JSON.stringify({
+          ...newApp,
+          patientId: targetPatientId,
+          date: fullDateTimeStr,
+        }),
       });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.error || 'Not kaydedilemedi.');
 
-      const notesRes = await fetch('/api/daily-notes', { cache: 'no-store' });
-      const notesData = await notesRes.json();
-      if (notesRes.ok) setPastNotesList(getApiArray(notesData));
+      const resData = await res.json();
+
+      if (res.ok) {
+        setNewApp({ patientId: '', title: 'İlk Muayene / Tanışma', type: 'INITIAL', notes: '' });
+        setSelectedPatientObj(null);
+        setPatientSearch('');
+        setQuickPatient({ fullName: '', phone: '' });
+        setIsNewPatientMode(false);
+        setSelectedProductId('');
+        setIsDrawerOpen(false);
+        fetchData();
+      } else {
+        alert('Randevu kaydı oluşturulamadı: ' + (resData.error || 'Bilinmeyen hata'));
+      }
     } catch (err) {
-      console.error('Not kaydetme hatası:', err);
-      alert(err?.message || 'Not kaydedilemedi.');
-    } finally {
-      setNoteSaving(false);
+      alert('Randevu eklenemedi: ' + err.message);
     }
   };
 
-  const sendWhatsAppReminder = (phone, patientName, dateStr, title) => {
-    if (!phone) {
-      alert('Hastanın telefon numarası bulunamadı.');
-      return;
+  const handleStatusChange = async (id, status) => {
+    try {
+      const res = await fetch(`/api/appointments?id=${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) fetchData();
+    } catch (err) {
+      alert('Güncellenemedi');
     }
-
-    const procedureName = String(title || 'randevu').split(' – ')[0].trim() || 'randevu';
-    const timeFormatted = getIstanbulTime(dateStr);
-    const message = `Sayın ${patientName || 'Hastamız'}, Novantis'te saat ${timeFormatted} için planlanan "${procedureName}" randevunuzu hatırlatmak isteriz.`;
-    const whatsappUrl = buildWhatsAppUrl(phone, message);
-    if (!whatsappUrl) {
-      alert('Telefon numarası geçersiz.');
-      return;
-    }
-    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   };
 
-  const formatDate = () => {
-    return new Intl.DateTimeFormat('tr-TR', {
-      timeZone: 'Europe/Istanbul',
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    }).format(new Date());
+  const handleDelete = async (id) => {
+    if (!confirm('Randevuyu silmek istediğinize emin misiniz?')) return;
+    try {
+      const res = await fetch(`/api/appointments?id=${id}`, { method: 'DELETE' });
+      if (res.ok) fetchData();
+    } catch (err) {
+      alert('Silinemedi');
+    }
+  };
+
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  const [draggedAppId, setDraggedAppId] = useState(null);
+  const [dragOverSlot, setDragOverSlot] = useState(null);
+
+  const moveAppointment = async (appId, newDateTimeStr) => {
+    try {
+      const res = await fetch(`/api/appointments?id=${appId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: newDateTimeStr }),
+      });
+      if (res.ok) fetchData();
+      else alert('Randevu taşınamadı');
+    } catch (err) {
+      alert('Randevu taşınamadı: ' + err.message);
+    }
+  };
+
+  const handleDropOnSlot = async (targetSlotTime, dayStr) => {
+    const appId = draggedAppId;
+    setDraggedAppId(null);
+    setDragOverSlot(null);
+    if (!appId) return;
+
+    const newDateTimeStr = `${dayStr || selectedDate}T${targetSlotTime}:00`;
+    await moveAppointment(appId, newDateTimeStr);
+  };
+
+  const openWhatsApp = (phone, patientName, dateStr, title) => {
+    if (!phone) return alert('Hastanın telefonu yok.');
+    const dateFormatted = new Date(dateStr).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+    const procedureName = String(title || '').split(' – ')[0].trim();
+    const message = `Sayın ${patientName}, Novantis'te ${dateFormatted} tarihindeki "${procedureName}" randevunuzu hatırlatmak isteriz.`;
+
+    const url = buildWhatsAppUrl(phone, message);
+    if (!url) return alert('Telefon numarası geçersiz.');
+    window.open(url, '_blank');
   };
 
   return (
-    <div
-      className={`${inter.variable} ${playfair.variable}`}
-      style={{
-        maxWidth: 1080,
-        margin: '0 auto',
-        padding: '8px 4px 36px',
-        fontFamily: sans,
-        color: T.bg,
-      }}
-    >
-      {/* ÜST BAŞLIK */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-end',
-          marginBottom: 28,
-          paddingBottom: 20,
-          borderBottom: `1px solid ${T.purple}30`,
-          gap: 20,
-          flexWrap: 'wrap',
-        }}
-      >
+    <div style={{ maxWidth: 1180, margin: '0 auto', color: '#0f172a' }}>
+
+      {/* ÜST BAŞLIK BARI */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, borderBottom: `1px solid ${T.purple}30`, paddingBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <p style={{ margin: '0 0 6px 0', fontSize: 13, fontWeight: 700, color: T.purpleDark, letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: sans }}>
-            Novantis Anasayfa Paneli
-          </p>
-          <h1 style={{ margin: 0, fontSize: 30, fontWeight: 700, color: T.bg, fontFamily: sans, letterSpacing: '-0.01em' }}>
-            {formatDate()}
+          <span style={{ fontSize: 11, fontWeight: '700', color: T.purpleDark, textTransform: 'uppercase', letterSpacing: '0.05em' }}>NOVANTİS ANASAYFA</span>
+          <h1 style={{ margin: '2px 0 0 0', fontSize: 22, fontWeight: '800', color: T.bg, letterSpacing: '-0.02em' }}>
+            Akıllı Randevu Çizelgesi & Takvim
           </h1>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: T.gold, borderRadius: 12, padding: '10px 20px' }}>
-          <div style={{ fontSize: 26, fontWeight: 800, color: T.bg, fontFamily: serif, lineHeight: 1 }}>
-            {stats.todayAppointmentsCount}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6, background: '#F0E7F2', border: `1px solid ${T.purple}30`, padding: '8px 14px', borderRadius: 8 }}>
+            <span style={{ fontSize: 16, fontWeight: 800, color: T.purpleDark }}>{patients.length}</span>
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: T.purpleDark }}>Kayıtlı toplam hasta</span>
           </div>
-          <div style={{ fontSize: 11.5, color: T.bg, fontWeight: 700, lineHeight: 1.2, maxWidth: 70 }}>
-            bugünkü randevu
-          </div>
-        </div>
-      </div>
-
-      {/* İSTATİSTİK KARTLARI */}
-      <div
-        className="dashboard-metrics"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: 16,
-          marginBottom: 26,
-        }}
-      >
-        {[
-          { label: 'Kayıtlı toplam hasta', value: stats.totalPatients, color: T.purpleDark },
-          { label: 'Bugünkü randevular', value: stats.todayAppointmentsCount, color: T.success },
-          { label: 'Yarının randevuları', value: tomorrowAppointments.length, color: '#8A6A1E' },
-          { label: 'Bekleyen rötuş / kontrol', value: stats.pendingTouchUpsCount, color: '#8B4A5A' },
-        ].map((item) => (
-          <div
-            key={item.label}
-            style={{
-              background: T.white,
-              border: `1px solid ${T.purple}30`,
-              borderRadius: 16,
-              padding: 24,
-            }}
-          >
-            <div style={{ fontSize: 36, fontWeight: 700, color: item.color, fontFamily: serif, lineHeight: 1 }}>
-              {item.value}
-            </div>
-            <div style={{ fontSize: 12.5, color: T.purple, marginTop: 8, fontWeight: 600 }}>
-              {item.label}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* BUGÜN / YARIN */}
-      <div
-        className="dashboard-appointments"
-        style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 26 }}
-      >
-        {/* BUGÜNÜN PROGRAMI */}
-        <div style={{ background: T.white, border: `1px solid ${T.purple}30`, borderLeft: `3px solid ${T.gold}`, borderRadius: 16, padding: 24 }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', gap: '4px 12px', marginBottom: 16 }}>
-            <h3 style={{ margin: 0, minWidth: 0, fontSize: 17, fontWeight: 800, color: T.bg, fontFamily: sans }}>
-              Bugünün programı
-            </h3>
-            <span style={{ fontSize: 12, color: T.purple, fontWeight: 600, flexShrink: 0 }}>
-              {todayAppointments.length} randevu
-            </span>
-          </div>
-
-          {loading ? (
-            <div style={{ color: T.purple, fontSize: 13, padding: '12px 0' }}>Yükleniyor...</div>
-          ) : todayAppointments.length === 0 ? (
-            <div style={{ color: T.purple, fontSize: 13, padding: '16px 0', fontFamily: sans }}>
-              Bugün için planlanmış randevu yok.
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {todayAppointments.map((appointment, index) => {
-                const timeStr = getIstanbulTime(appointment.date);
-                const patient = appointment.patient;
-
-                return (
-                  <div
-                    key={appointment.id}
-                    style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 15,
-                      padding: '13px 0',
-                      borderTop: index === 0 ? 'none' : `1px solid ${T.purple}25`,
-                    }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 9 }}>
-                        <span style={{ fontSize: 15, fontWeight: 800, color: '#8A6A1E', fontFamily: sans }}>
-                          {timeStr}
-                        </span>
-                        <span style={{ fontSize: 13.5, fontWeight: 700, color: T.bg }}>
-                          {appointment.title}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 12, color: T.purple, marginTop: 3 }}>
-                        {patient?.fullName || 'Hasta bilgisi yok'}
-                        {patient?.phone ? ` · ${patient.phone}` : ''}
-                      </div>
-                    </div>
-
-                    {patient?.id ? (
-                      <Link
-                        href={`/admin/patients/${patient.id}`}
-                        style={{ color: T.purpleDark, textDecoration: 'none', fontSize: 12, fontWeight: 700, borderBottom: `1px solid ${T.purpleDark}`, paddingBottom: 1, whiteSpace: 'nowrap' }}
-                      >
-                        Dosya
-                      </Link>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* YARININ HATIRLATMALARI */}
-        <div style={{ background: T.white, border: `1px solid ${T.purple}30`, borderLeft: `3px solid ${T.purpleDark}`, borderRadius: 16, padding: 24 }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', gap: '4px 12px', marginBottom: 16 }}>
-            <h3 style={{ margin: 0, minWidth: 0, fontSize: 17, fontWeight: 800, color: T.bg, fontFamily: sans }}>
-              Yarının hatırlatmaları
-            </h3>
-            <span style={{ fontSize: 12, color: T.purpleDark, fontWeight: 700, flexShrink: 0 }}>
-              WhatsApp
-            </span>
-          </div>
-
-          {loading ? (
-            <div style={{ color: T.purple, fontSize: 13, padding: '12px 0' }}>Yükleniyor...</div>
-          ) : tomorrowAppointments.length === 0 ? (
-            <div style={{ color: T.purple, fontSize: 13, padding: '16px 0', fontFamily: sans }}>
-              Yarın için randevu bulunmuyor.
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {tomorrowAppointments.map((appointment, index) => {
-                const timeStr = getIstanbulTime(appointment.date);
-                const patient = appointment.patient;
-
-                return (
-                  <div
-                    key={appointment.id}
-                    style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 15,
-                      padding: '13px 0',
-                      borderTop: index === 0 ? 'none' : `1px solid ${T.purple}25`,
-                    }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 9 }}>
-                        <span style={{ fontSize: 15, fontWeight: 800, color: T.purpleDark, fontFamily: sans }}>
-                          {timeStr}
-                        </span>
-                        <span style={{ fontSize: 13.5, fontWeight: 700, color: T.bg }}>
-                          {appointment.title}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 12, color: T.purple, marginTop: 3 }}>
-                        {patient?.fullName || 'Hasta bilgisi yok'}
-                        {patient?.phone ? ` · ${patient.phone}` : ''}
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => sendWhatsAppReminder(patient?.phone, patient?.fullName, appointment.date, appointment.title)}
-                      style={{
-                        background: '#25D366',
-                        color: '#ffffff',
-                        border: 'none',
-                        padding: '7px 13px',
-                        borderRadius: 6,
-                        fontSize: 11.5,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        fontFamily: sans,
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      Mesaj gönder
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* GÜNÜN NOTLARI */}
-      <div style={{ background: T.white, border: `1px solid ${T.purple}30`, borderRadius: 16, padding: 24, marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: T.bg, fontFamily: sans }}>
-              Günün klinik notları
-            </h3>
-            <p style={{ margin: '4px 0 0 0', fontSize: 12.5, color: T.purple }}>
-              Seçilen gün için özel notlar alın, geçmiş günlerin arşivine göz atın.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <label htmlFor="note-date" style={{ fontSize: 12.5, fontWeight: 700, color: T.purple }}>
-              Tarih:
-            </label>
-            <input
-              id="note-date"
-              type="date"
-              value={selectedNoteDate}
-              onChange={(event) => setSelectedNoteDate(event.target.value)}
-              style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${T.purple}`, fontSize: 13, background: T.white, fontFamily: sans, color: T.bg }}
-            />
-          </div>
-        </div>
-
-        <div className="dashboard-notes" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <textarea
-            rows={4}
-            value={noteContent}
-            onChange={(event) => setNoteContent(event.target.value)}
-            placeholder={`${selectedNoteDate} tarihi için klinik notlarını buraya yazın...`}
-            style={{
-              width: '100%',
-              padding: 13,
-              borderRadius: 8,
-              border: `1px solid ${T.purple}`,
-              fontSize: 14,
-              fontFamily: sans,
-              boxSizing: 'border-box',
-              outline: 'none',
-              resize: 'vertical',
-              color: T.bg,
-              background: T.white,
-            }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              type="button"
-              onClick={handleSaveNote}
-              disabled={noteSaving}
-              style={{
-                background: T.purpleDark,
-                color: T.gold,
-                border: 'none',
-                padding: '10px 22px',
-                borderRadius: 8,
-                fontWeight: 700,
-                fontSize: 13,
-                cursor: noteSaving ? 'default' : 'pointer',
-                fontFamily: sans,
-                opacity: noteSaving ? 0.7 : 1,
-              }}
+          {googleConnected === false && (
+            <a
+              href="/api/auth/google/connect"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#fff', border: '1px solid #E2D5E5', padding: '8px 14px', borderRadius: 8, color: T.purpleDark, textDecoration: 'none', fontWeight: '700', fontSize: 13 }}
             >
-              {noteSaving ? 'Kaydediliyor...' : 'Notu kaydet'}
-            </button>
+              <IconCalendar /> Google Takvim&apos;i Bağla
+            </a>
+          )}
+          {googleConnected === true && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#E9F0EB', border: '1px solid #A7C4AF', padding: '8px 14px', borderRadius: 8, color: T.success, fontWeight: '700', fontSize: 13 }}>
+              <IconCalendar /> Google Takvim Bağlı
+            </span>
+          )}
+          <Link href="/admin/patients" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#ffffff', border: `1px solid ${T.purple}50`, padding: '8px 14px', borderRadius: 8, color: T.bg, textDecoration: 'none', fontWeight: '700', fontSize: 13 }}>
+            Hasta Listesi
+          </Link>
+          <button
+            type="button"
+            onClick={() => setIsDrawerOpen(true)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: T.purpleDark, border: 'none', padding: '8px 16px', borderRadius: 8, color: T.gold, fontWeight: '700', fontSize: 13, cursor: 'pointer' }}
+          >
+            <IconPlus /> Yeni Randevu
+          </button>
+        </div>
+      </div>
+
+      {/* GÜN ÇİZELGESİ (ANA) + AYLIK TAKVİM (KÜÇÜK WIDGET) */}
+      <div className="agenda-grid" style={{ display: 'grid', gridTemplateColumns: '300px 1fr', alignItems: 'start', gap: 20 }}>
+
+        {/* SOL: KÜÇÜK AYLIK TAKVİM WIDGET'I */}
+        <div style={{ background: '#ffffff', borderRadius: 12, border: `1px solid ${T.purple}30`, padding: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 6 }}>
+            <h2 style={{ margin: 0, fontSize: 13, fontWeight: '800', color: T.bg, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <IconCalendar /> {currentMonthDate.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })}
+            </h2>
+
+            <div style={{ display: 'flex', gap: 3 }}>
+              <button onClick={() => setCurrentMonthDate(new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() - 1, 1))} style={{ background: '#f1f5f9', border: 'none', padding: '4px 6px', borderRadius: 5, cursor: 'pointer', display: 'flex' }}>
+                <IconChevronLeft />
+              </button>
+              <button onClick={() => { const today = new Date(); setCurrentMonthDate(today); setSelectedDate(getLocalDateString(today)); }} style={{ background: '#F0E7F2', border: 'none', padding: '4px 8px', borderRadius: 5, fontSize: 10, fontWeight: '700', cursor: 'pointer', color: T.purpleDark }}>
+                Bugün
+              </button>
+              <button onClick={() => setCurrentMonthDate(new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() + 1, 1))} style={{ background: '#f1f5f9', border: 'none', padding: '4px 6px', borderRadius: 5, cursor: 'pointer', display: 'flex' }}>
+                <IconChevronRight />
+              </button>
+            </div>
           </div>
 
-          <details style={{ background: '#F0E7F2', border: `1px solid ${T.purple}30`, borderRadius: 8, padding: '10px 14px' }}>
-            <summary style={{ fontSize: 12, fontWeight: 700, color: T.purple, cursor: 'pointer' }}>
-              Geçmiş notlar arşivi {pastNotesList.length > 0 ? `(${pastNotesList.length})` : ''}
-            </summary>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, textAlign: 'center' }}>
+          {['P', 'S', 'Ç', 'P', 'C', 'C', 'P'].map((dayName, i) => (
+            <div key={i} style={{ fontSize: 9, fontWeight: '700', color: '#94a3b8', paddingBottom: 4 }}>{dayName}</div>
+          ))}
 
-            {pastNotesList.length === 0 ? (
-              <div style={{ fontSize: 11.5, color: T.purple, fontFamily: sans, marginTop: 10 }}>
-                Henüz geçmiş kayıt yok.
+          {monthCalendarDays.map((item, idx) => {
+            const dayApps = appointmentsByDateMap[item.dateStr] || [];
+            const isSelected = selectedDate === item.dateStr;
+            const isToday = getLocalDateString(new Date()) === item.dateStr;
+
+            return (
+              <div
+                key={idx}
+                onClick={() => setSelectedDate(item.dateStr)}
+                style={{
+                  minHeight: 28,
+                  padding: 2,
+                  borderRadius: 6,
+                  border: isSelected ? `2px solid ${T.purpleDark}` : isToday ? `1px solid ${T.gold}` : '1px solid transparent',
+                  background: isSelected ? '#F0E7F2' : isToday ? '#FBF3E3' : 'transparent',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  opacity: item.isCurrentMonth ? 1 : 0.35,
+                }}
+              >
+                <span style={{ fontSize: 11, fontWeight: isSelected || isToday ? '800' : '600', color: isSelected ? T.purpleDark : T.bg }}>
+                  {item.dayNumber}
+                </span>
+
+                {dayApps.length > 0 && (
+                  <span style={{ width: 4, height: 4, borderRadius: '50%', background: isSelected ? T.purpleDark : T.gold, marginTop: 1 }} />
+                )}
               </div>
-            ) : (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-                {pastNotesList.map((note) => (
-                  <button
-                    type="button"
-                    key={note.id}
-                    onClick={() => setSelectedNoteDate(note.date)}
+            );
+          })}
+        </div>
+      </div>
+
+        {/* GÜN/HAFTA ÇİZELGESİ (agenda-grid'in 2. sütunu) */}
+        {/* minWidth: 0 olmazsa grid öğesi, içindeki 850px'lik haftalık
+            tabloyu sığdırmak için 1fr'nin kendisini büyütür ve kaydırma
+            çubuğu bu kutunun içinde değil tüm sayfada çıkar. */}
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 12, padding: 18, minWidth: 0 }}>
+          <h3 style={{ margin: '0 0 14px 0', fontSize: 15, fontWeight: '700', color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <IconClock />
+            {`${weekDates[0].dayNumber} - ${weekDates[6].dayNumber} ${new Date(`${weekDates[6].dateStr}T00:00:00`).toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })}`}
+          </h3>
+
+          {loading ? (
+            <div style={{ color: '#64748b', fontSize: 13, padding: '20px 0' }}>Yükleniyor...</div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `56px repeat(7, minmax(110px, 1fr))`, gap: 4, minWidth: 850 }}>
+                <div />
+                {weekDates.map(({ dateStr, dayNumber, weekdayLabel }) => (
+                  <div
+                    key={dateStr}
+                    onClick={() => { setSelectedDate(dateStr); setShowDayDrawer(true); }}
                     style={{
-                      background: selectedNoteDate === note.date ? T.purpleDark : T.white,
-                      border: `1px solid ${selectedNoteDate === note.date ? T.purpleDark : T.purple}40`,
-                      padding: '6px 12px',
-                      borderRadius: 999,
-                      fontSize: 12,
+                      textAlign: 'center',
+                      padding: '4px 2px',
+                      borderRadius: 6,
                       cursor: 'pointer',
-                      fontWeight: selectedNoteDate === note.date ? 700 : 500,
-                      color: selectedNoteDate === note.date ? T.gold : T.bg,
-                      whiteSpace: 'nowrap',
-                      fontFamily: sans,
+                      background: dateStr === getLocalDateString(new Date()) ? '#FBF3E3' : 'transparent',
                     }}
                   >
-                    {note.date}
-                  </button>
+                    <div style={{ fontSize: 10, fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase' }}>{weekdayLabel}</div>
+                    <div style={{ fontSize: 13, fontWeight: '800', color: T.bg }}>{dayNumber}</div>
+                  </div>
+                ))}
+
+                {timeSlots.map((slotTime) => (
+                  <Fragment key={slotTime}>
+                    <div style={{ fontSize: 11, fontWeight: '700', color: '#94a3b8', textAlign: 'right', paddingRight: 4, paddingTop: 4 }}>
+                      {slotTime}
+                    </div>
+                    {weekDates.map(({ dateStr }) => {
+                      const occupiedApps = weekSlotMap[dateStr]?.[slotTime] || [];
+                      const cellKey = `${dateStr}-${slotTime}`;
+                      const isDragOver = dragOverSlot === cellKey;
+
+                      return (
+                        <div
+                          key={cellKey}
+                          onDragOver={(e) => { e.preventDefault(); setDragOverSlot(cellKey); }}
+                          onDragLeave={() => setDragOverSlot((cur) => (cur === cellKey ? null : cur))}
+                          onDrop={(e) => { e.preventDefault(); handleDropOnSlot(slotTime, dateStr); }}
+                          style={{
+                            minHeight: 30,
+                            border: isDragOver ? `2px dashed ${T.gold}` : '1px solid #f1f5f9',
+                            borderRadius: 4,
+                            background: isDragOver ? '#FFF8E7' : occupiedApps.length > 0 ? '#fef2f2' : '#ffffff',
+                            padding: 2,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 2,
+                          }}
+                        >
+                          {occupiedApps.map((occupiedApp) => (
+                            <div
+                              key={occupiedApp.id}
+                              draggable
+                              onDragStart={(e) => { e.stopPropagation(); setDraggedAppId(occupiedApp.id); }}
+                              onDragEnd={() => setDraggedAppId(null)}
+                              onClick={() => { setSelectedDate(dateStr); setShowDayDrawer(true); }}
+                              title={`${occupiedApp.exactTimeStr} — ${occupiedApp.title} — ${occupiedApp.patient?.fullName || 'Hasta atanmadı'}`}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 3,
+                                background: '#ffffff',
+                                border: '1px solid #fecdd3',
+                                borderRadius: 4,
+                                padding: '2px 4px',
+                                cursor: 'grab',
+                                opacity: draggedAppId === occupiedApp.id ? 0.5 : 1,
+                                overflow: 'hidden',
+                              }}
+                            >
+                              <span style={{ width: 6, height: 6, borderRadius: '50%', background: getColorHex(occupiedApp.colorId), flexShrink: 0 }} />
+                              <span style={{ fontSize: 10, fontWeight: '700', color: '#991b1b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {occupiedApp.patient?.fullName || occupiedApp.title}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </Fragment>
                 ))}
               </div>
-            )}
-          </details>
+            </div>
+          )}
         </div>
+
       </div>
 
+      <Drawer
+        open={showDayDrawer}
+        onClose={() => setShowDayDrawer(false)}
+        title={new Date(`${selectedDate}T00:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' })}
+        width={480}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {dayAppointments.length === 0 && (
+            <div style={{ color: '#64748b', fontSize: 13, padding: '8px 0' }}>Bu gün için randevu yok.</div>
+          )}
+          {timeSlots.map((slotTime) => {
+            const occupiedApps = slotMap[slotTime] || [];
+            if (occupiedApps.length === 0) return null;
+
+            return (
+              <div key={slotTime} style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fef2f2' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                  <span style={{ fontSize: 14, fontWeight: '800', color: '#334155', minWidth: 48 }}>
+                    {slotTime}
+                  </span>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 200 }}>
+                    {occupiedApps.map((occupiedApp) => (
+                      <div
+                        key={occupiedApp.id}
+                        style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', background: '#ffffff', padding: '6px 10px', borderRadius: 6, border: '1px solid #fecdd3', gap: 6 }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span
+                            title={occupiedApp.colorId ? undefined : 'Renk atanmamış'}
+                            style={{ width: 10, height: 10, borderRadius: '50%', background: getColorHex(occupiedApp.colorId), flexShrink: 0 }}
+                          />
+                          <span style={{ fontSize: 11, background: T.purpleDark, color: '#ffffff', padding: '2px 6px', borderRadius: 4, fontWeight: '800' }}>
+                            {occupiedApp.exactTimeStr}
+                          </span>
+                          <span style={{ fontSize: 13, fontWeight: '700', color: '#991b1b' }}>{occupiedApp.title}</span>
+                          <span style={{ fontSize: 12, color: '#475569' }}>
+                            — <b>{occupiedApp.patient?.fullName || 'Hasta atanmadı'}</b>
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <button
+                            onClick={() => openWhatsApp(occupiedApp.patient?.phone, occupiedApp.patient?.fullName, occupiedApp.date, occupiedApp.title)}
+                            title="WhatsApp'ta mesaj gönder"
+                            style={{ background: '#25D366', color: '#ffffff', border: 'none', padding: '6px', borderRadius: 4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                          >
+                            <IconWhatsApp />
+                          </button>
+                          <select value={occupiedApp.status} onChange={(e) => handleStatusChange(occupiedApp.id, e.target.value)} style={{ padding: '3px 6px', borderRadius: 4, border: '1px solid #cbd5e1', fontSize: 11 }}>
+                            <option value="PENDING">Bekliyor</option>
+                            <option value="ATTENDED">Geldi</option>
+                            <option value="NO_SHOW">Gelmedi</option>
+                            <option value="CANCELED">İptal</option>
+                          </select>
+                          <button onClick={() => handleDelete(occupiedApp.id)} style={{ background: '#fff1f2', border: 'none', color: '#e11d48', padding: '4px 6px', borderRadius: 4, cursor: 'pointer' }}>
+                            <IconTrash />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Drawer>
+
+      <Drawer open={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} title="Yeni Randevu">
+        <div style={{ background: '#F0E7F2', border: '1px solid #E2D5E5', padding: '10px 12px', borderRadius: 8, marginBottom: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 12, color: T.purpleDark, fontWeight: '600', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <IconClock /> Saat Seçin / Yazın:
+          </span>
+          <input
+            type="time"
+            value={selectedTime}
+            onChange={(e) => setSelectedTime(e.target.value)}
+            style={{ border: `1px solid ${T.purpleDark}`, borderRadius: 6, padding: '4px 8px', fontSize: 14, fontWeight: '800', color: T.purpleDark, background: '#ffffff', outline: 'none' }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', gap: 4, marginBottom: 14, background: '#f1f5f9', padding: 3, borderRadius: 6 }}>
+          <button type="button" onClick={() => setIsNewPatientMode(false)} style={{ flex: 1, padding: '6px', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: '600', cursor: 'pointer', background: !isNewPatientMode ? '#ffffff' : 'transparent', color: !isNewPatientMode ? '#0f172a' : '#64748b' }}>
+            Kayıtlı Hasta
+          </button>
+          <button type="button" onClick={() => { setIsNewPatientMode(true); setNewApp(prev => ({ ...prev, type: 'INITIAL', title: 'İlk Muayene / Tanışma' })); }} style={{ flex: 1, padding: '6px', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: '600', cursor: 'pointer', background: isNewPatientMode ? '#ffffff' : 'transparent', color: isNewPatientMode ? '#0f172a' : '#64748b' }}>
+            Yeni Müşteri
+          </button>
+        </div>
+
+        <form onSubmit={handleCreateAppointment} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {!isNewPatientMode ? (
+            <div style={{ position: 'relative' }} ref={searchWrapperRef}>
+              <label style={{ fontSize: 11, fontWeight: '600', color: '#475569', display: 'block', marginBottom: 3 }}>
+                Kayıtlı Hasta Ara
+              </label>
+
+              {selectedPatientObj ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6 }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: '700', color: '#166534' }}>{selectedPatientObj.fullName}</div>
+                    <div style={{ fontSize: 11, color: '#15803d' }}>{selectedPatientObj.phone || 'Tel yok'}</div>
+                  </div>
+                  <button type="button" onClick={() => { setSelectedPatientObj(null); setNewApp({ ...newApp, patientId: '' }); setPatientSearch(''); }} style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: 12, fontWeight: '700', cursor: 'pointer' }}>
+                    Değiştir
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div style={{ position: 'relative' }}>
+                    <input type="text" placeholder="Hasta adı veya telefon..." value={patientSearch} onChange={(e) => { setPatientSearch(e.target.value); setIsDropdownOpen(true); }} onFocus={() => setIsDropdownOpen(true)} style={{ width: '100%', padding: '8px 10px 8px 30px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 12, boxSizing: 'border-box' }} />
+                    <div style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}><IconSearch /></div>
+                  </div>
+
+                  {isDropdownOpen && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: 6, marginTop: 4, maxHeight: 180, overflowY: 'auto', zIndex: 50 }}>
+                      {filteredPatients.length === 0 ? (
+                        <div style={{ padding: 10, fontSize: 12, color: '#94a3b8', textAlign: 'center' }}>Hasta bulunamadı</div>
+                      ) : (
+                        filteredPatients.map((p) => (
+                          <div key={p.id} onClick={() => { setSelectedPatientObj(p); setNewApp({ ...newApp, patientId: p.id }); setIsDropdownOpen(false); }} style={{ padding: '8px 12px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', fontSize: 12, display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ fontWeight: '600', color: '#0f172a' }}>{p.fullName}</span>
+                            <span style={{ fontSize: 11, color: '#64748b' }}>{p.phone || 'Tel yok'}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ) : (
+            <div style={{ background: '#f0fdf4', padding: 12, borderRadius: 8, border: '1px solid #bbf7d0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: '700', color: '#166534', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <IconUserPlus /> Yeni Müşteri Bilgisi:
+              </span>
+              <input placeholder="Ad Soyad" value={quickPatient.fullName} onChange={(e) => setQuickPatient({ ...quickPatient, fullName: e.target.value })} style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 12, boxSizing: 'border-box' }} />
+              <PhoneInput value={quickPatient.phone} onChange={(val) => setQuickPatient({ ...quickPatient, phone: val })} required />
+            </div>
+          )}
+
+          <div>
+            <label style={{ fontSize: 11, fontWeight: '600', color: '#475569' }}>Randevu Türü</label>
+            <select value={newApp.type} onChange={(e) => { const t = e.target.value; setNewApp({ ...newApp, type: t, title: t === 'INITIAL' ? 'İlk Muayene / Tanışma' : t === 'TOUCH_UP' ? 'Rötuş / Kontrol' : 'Rutin Seans' }); }} style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #cbd5e1', marginTop: 3, fontSize: 12 }}>
+              <option value="INITIAL">İlk Seans / Yeni Muayene</option>
+              <option value="TOUCH_UP">Rötuş / Kontrol</option>
+              <option value="ROUTINE">Rutin Seans</option>
+            </select>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 11, fontWeight: '600', color: '#475569', display: 'block', marginBottom: 4 }}>İşlem (hızlı seçim)</label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {APPOINTMENT_PROCEDURE_OPTIONS.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => setNewApp((prev) => ({ ...prev, title: buildAppointmentTitle(opt, products.find((p) => p.id === selectedProductId)?.name) }))}
+                  style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${T.purpleDark}`, background: newApp.title.startsWith(opt) ? T.purpleDark : '#fff', color: newApp.title.startsWith(opt) ? '#fff' : T.purpleDark, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 11, fontWeight: '600', color: '#475569' }}>Ürün (opsiyonel — envanterden)</label>
+            <select
+              value={selectedProductId}
+              onChange={(e) => {
+                const productId = e.target.value;
+                setSelectedProductId(productId);
+                const product = products.find((p) => p.id === productId);
+                setNewApp((prev) => ({ ...prev, title: buildAppointmentTitle(prev.title, product?.name) }));
+              }}
+              style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #cbd5e1', marginTop: 3, fontSize: 12 }}
+            >
+              <option value="">Ürün seçilmedi</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 11, fontWeight: '600', color: '#475569' }}>İşlem Başlığı</label>
+            <input value={newApp.title} onChange={(e) => setNewApp({ ...newApp, title: e.target.value })} placeholder="Örn: Botoks Kontrolü" style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid #cbd5e1', marginTop: 3, fontSize: 12, boxSizing: 'border-box' }} />
+          </div>
+
+          <button type="submit" style={{ marginTop: 4, background: T.purpleDark, color: '#ffffff', border: 'none', padding: '10px', borderRadius: 6, fontWeight: '700', fontSize: 13, cursor: 'pointer' }}>
+            Saat {selectedTime} Randevusunu Kaydet
+          </button>
+        </form>
+      </Drawer>
+
       <style jsx>{`
-        @media (max-width: 768px) {
-          div {
-            box-sizing: border-box;
-          }
-        }
-        @media (max-width: 700px) {
-          .dashboard-metrics {
-            grid-template-columns: repeat(2, 1fr) !important;
-          }
-          .dashboard-appointments {
+        @media (max-width: 860px) {
+          .agenda-grid {
             grid-template-columns: 1fr !important;
           }
         }

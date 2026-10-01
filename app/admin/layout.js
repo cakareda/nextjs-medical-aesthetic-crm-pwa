@@ -32,15 +32,6 @@ const IconUsers = () => (
   </svg>
 );
 
-const IconCalendar = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-    <line x1="16" y1="2" x2="16" y2="6"></line>
-    <line x1="8" y1="2" x2="8" y2="6"></line>
-    <line x1="3" y1="10" x2="21" y2="10"></line>
-  </svg>
-);
-
 const IconPackage = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line>
@@ -56,6 +47,15 @@ const IconFilePlus = () => (
     <polyline points="14 2 14 8 20 8"></polyline>
     <line x1="12" y1="18" x2="12" y2="12"></line>
     <line x1="9" y1="15" x2="15" y2="15"></line>
+  </svg>
+);
+
+const IconStickyNote = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M15.5 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9.5z"></path>
+    <polyline points="15 3 15 9 21 9"></polyline>
+    <line x1="8" y1="13" x2="16" y2="13"></line>
+    <line x1="8" y1="17" x2="13" y2="17"></line>
   </svg>
 );
 
@@ -106,7 +106,7 @@ export default function AdminLayout({ children }) {
     { label: 'Anasayfa', href: '/admin', icon: <IconLayoutDashboard /> },
     { label: 'Yeni Onam Gönder', href: '/admin/new-session', icon: <IconFilePlus /> },
     { label: 'Hasta Kayıtları', href: '/admin/patients', icon: <IconUsers /> },
-    { label: 'Ajanda', href: '/admin/appointments', icon: <IconCalendar /> },
+    { label: 'Klinik Notları', href: '/admin/notes', icon: <IconStickyNote /> },
     { label: 'Stok & Envanter', href: '/admin/inventory', icon: <IconPackage /> },
   ];
 

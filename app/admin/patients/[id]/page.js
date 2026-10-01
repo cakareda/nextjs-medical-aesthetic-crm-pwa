@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { T } from '@/lib/theme';
 import { UNIT_LABELS, getQuantityOptions } from '@/lib/quantity-options';
 import { APPOINTMENT_PROCEDURE_OPTIONS, buildAppointmentTitle } from '@/lib/appointment-categories';
+import Drawer from '@/components/Drawer';
 
 function formatDateTime(dateStr) {
   if (!dateStr) return '—';
@@ -49,11 +50,19 @@ export default function PatientDetailPage() {
   const productSearchRef = useRef(null);
   const [savingTreatment, setSavingTreatment] = useState(false);
 
+  const [editingTreatmentId, setEditingTreatmentId] = useState(null);
+  const [editTreatmentForm, setEditTreatmentForm] = useState({
+    treatmentType: '', applicationArea: '', price: '', paidAmount: '', notes: '',
+  });
+  const [savingTreatmentEdit, setSavingTreatmentEdit] = useState(false);
+
   const [showAddAppointment, setShowAddAppointment] = useState(false);
   const [appointmentForm, setAppointmentForm] = useState({ title: 'Rötuş / Kontrol Randevusu', date: '', type: 'TOUCH_UP', notes: '' });
   const [appointmentProductId, setAppointmentProductId] = useState('');
 
   const [uploadingKey, setUploadingKey] = useState(null);
+  const [showOnamPanel, setShowOnamPanel] = useState(false);
+  const [showGaleriPanel, setShowGaleriPanel] = useState(false);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -211,6 +220,40 @@ export default function PatientDetailPage() {
     }
   };
 
+  const handleStartEditTreatment = (t) => {
+    setEditingTreatmentId(t.id);
+    setEditTreatmentForm({
+      treatmentType: t.treatmentType || '',
+      applicationArea: t.applicationArea || '',
+      price: t.price ?? '',
+      paidAmount: t.paidAmount ?? '',
+      notes: t.notes || '',
+    });
+  };
+
+  const handleCancelEditTreatment = () => {
+    setEditingTreatmentId(null);
+  };
+
+  const handleSaveTreatmentEdit = async (treatmentId) => {
+    setSavingTreatmentEdit(true);
+    try {
+      const res = await fetch(`/api/treatments/${treatmentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editTreatmentForm),
+      });
+      const data = await res.json();
+      if (!res.ok) return alert(data.error || 'İşlem güncellenemedi');
+      setEditingTreatmentId(null);
+      fetchAll();
+    } catch (err) {
+      alert('İşlem güncellenemedi: ' + err.message);
+    } finally {
+      setSavingTreatmentEdit(false);
+    }
+  };
+
   const handleUpdateTouchUpStatus = async (treatmentId, touchUpStatus) => {
     try {
       const res = await fetch(`/api/treatments/${treatmentId}`, {
@@ -260,6 +303,54 @@ export default function PatientDetailPage() {
     } catch (err) {
       alert('Fotoğraf silinemedi: ' + err.message);
     }
+  };
+
+  const renderPhotoGallery = (t) => {
+    const key = `${t.id}-after`;
+    const allPhotos = [
+      ...(t.beforePhotoUrl && !(t.photos || []).some((p) => p.url === t.beforePhotoUrl) ? [{ id: `${t.id}-legacy-before`, url: t.beforePhotoUrl }] : []),
+      ...(t.afterPhotoUrl && !(t.photos || []).some((p) => p.url === t.afterPhotoUrl) ? [{ id: `${t.id}-legacy-after`, url: t.afterPhotoUrl }] : []),
+      ...(t.photos || []),
+    ];
+
+    return (
+      <div key={t.id} style={{ background: '#F8F5F6', border: '1px solid #E2D5E5', borderRadius: 10, padding: 16, marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: T.bg, marginBottom: 12 }}>
+          {t.treatmentType} {t.applicationArea ? `(${t.applicationArea})` : ''} — {formatDateTime(t.performedAt)}
+        </div>
+
+        {allPhotos.length === 0 ? (
+          <div style={{ height: 100, background: '#F1F5F9', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8', fontSize: 12, marginBottom: 10 }}>
+            Fotoğraf Yok
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+            {allPhotos.map((photo) => (
+              <div key={photo.id} style={{ position: 'relative', width: 90, height: 90 }}>
+                <a href={photo.url} target="_blank" rel="noreferrer">
+                  <img src={photo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }} />
+                </a>
+                {photo.type && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePhoto(t.id, photo.id)}
+                    title="Sil"
+                    style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: T.error, color: '#5A2030', border: 'none', fontSize: 12, fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: T.purpleDark, color: T.gold, padding: '6px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+          {uploadingKey === key ? 'Yükleniyor...' : '+ Fotoğraf Ekle'}
+          <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handlePhotoUpload(t.id, e.target.files[0], 'after')} />
+        </label>
+      </div>
+    );
   };
 
   const [uploadingDocument, setUploadingDocument] = useState(false);
@@ -365,6 +456,12 @@ export default function PatientDetailPage() {
             </a>
             <button onClick={() => setShowAddAppointment(!showAddAppointment)} style={btnStyle(T.purpleDark, T.gold)}>
               Randevu Oluştur
+            </button>
+            <button onClick={() => setShowOnamPanel(true)} style={btnStyle('#F0E7F2', T.purpleDark)}>
+              Onam & Ödeme
+            </button>
+            <button onClick={() => setShowGaleriPanel(true)} style={btnStyle('#F0E7F2', T.purpleDark)}>
+              Galeri
             </button>
             <button onClick={handleDeletePatient} style={btnStyle(T.error, '#5A2030')}>
               Hastayı Sil
@@ -501,6 +598,7 @@ export default function PatientDetailPage() {
           )}
         </div>
 
+        <Drawer open={showOnamPanel} onClose={() => setShowOnamPanel(false)} title="Onam & Ödeme" width={480}>
         {/* ONAM / KONSÜLTASYON BELGELERİ */}
         <div style={{ ...cardStyle, marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
@@ -544,7 +642,7 @@ export default function PatientDetailPage() {
         </div>
 
         {/* FİNANS KARTLARI */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 28 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 4 }}>
           <div style={{ ...cardStyle, background: '#EFF6FF' }}>
             <div style={{ fontSize: 12, color: '#1E40AF', fontWeight: 700 }}>TOPLAM İŞLEM HACMİ</div>
             <div style={{ fontSize: 22, fontWeight: 800, color: '#1E3A8A', marginTop: 4 }}>₺{totalPrice.toLocaleString('tr-TR')}</div>
@@ -558,6 +656,15 @@ export default function PatientDetailPage() {
             <div style={{ fontSize: 22, fontWeight: 800, color: totalDebt > 0 ? '#8B4A5A' : T.bg, marginTop: 4 }}>₺{totalDebt.toLocaleString('tr-TR')}</div>
           </div>
         </div>
+        </Drawer>
+
+        <Drawer open={showGaleriPanel} onClose={() => setShowGaleriPanel(false)} title="Galeri — Öncesi / Sonrası" width={480}>
+          {(!patient.treatments || patient.treatments.length === 0) ? (
+            <p style={{ margin: 0, fontSize: 13, color: T.purple }}>Henüz işlem kaydı yok.</p>
+          ) : (
+            patient.treatments.map((t) => renderPhotoGallery(t))
+          )}
+        </Drawer>
 
         {/* TEDAVİ EKLEME */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -675,94 +782,68 @@ export default function PatientDetailPage() {
               const signedSession = t.signSessions?.find((s) => s.signedPdfUrl);
               return (
                 <div key={t.id} style={cardStyle}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-                    <div>
-                      <span style={{ fontSize: 16, fontWeight: 800, color: T.purpleDark }}>{t.treatmentType}</span>
-                      {t.applicationArea && (
-                        <span style={{ marginLeft: 8, fontSize: 12, color: T.purple }}>({t.applicationArea})</span>
-                      )}
+                  {editingTreatmentId === t.id ? (
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                        <div>
+                          <label style={labelStyle}>İşlem Türü</label>
+                          <input value={editTreatmentForm.treatmentType} onChange={(e) => setEditTreatmentForm({ ...editTreatmentForm, treatmentType: e.target.value })} style={inputStyle} />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Uygulama Bölgesi</label>
+                          <input value={editTreatmentForm.applicationArea} onChange={(e) => setEditTreatmentForm({ ...editTreatmentForm, applicationArea: e.target.value })} style={inputStyle} />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Ücret (₺)</label>
+                          <input type="number" value={editTreatmentForm.price} onChange={(e) => setEditTreatmentForm({ ...editTreatmentForm, price: e.target.value })} style={inputStyle} />
+                        </div>
+                        <div>
+                          <label style={labelStyle}>Ödenen (₺)</label>
+                          <input type="number" value={editTreatmentForm.paidAmount} onChange={(e) => setEditTreatmentForm({ ...editTreatmentForm, paidAmount: e.target.value })} style={inputStyle} />
+                        </div>
+                        <div style={{ gridColumn: 'span 2' }}>
+                          <label style={labelStyle}>Not</label>
+                          <input value={editTreatmentForm.notes} onChange={(e) => setEditTreatmentForm({ ...editTreatmentForm, notes: e.target.value })} style={inputStyle} />
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                        <button onClick={handleCancelEditTreatment} style={btnStyle('#F0E7F2', T.purpleDark)}>İptal</button>
+                        <button onClick={() => handleSaveTreatmentEdit(t.id)} disabled={savingTreatmentEdit} style={btnStyle(T.success, '#fff')}>
+                          {savingTreatmentEdit ? 'Kaydediliyor...' : 'Kaydet'}
+                        </button>
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <span style={{ fontSize: 12, color: T.purple, fontWeight: 700 }}>{formatDateTime(t.performedAt)}</span>
-                      <button onClick={() => handleDeleteTreatment(t.id)} style={{ background: T.error, border: 'none', color: '#5A2030', padding: '6px 10px', borderRadius: 6, cursor: 'pointer', fontWeight: 700 }}>
-                        Sil
-                      </button>
-                    </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                        <div>
+                          <span style={{ fontSize: 16, fontWeight: 800, color: T.purpleDark }}>{t.treatmentType}</span>
+                          {t.applicationArea && (
+                            <span style={{ marginLeft: 8, fontSize: 12, color: T.purple }}>({t.applicationArea})</span>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <span style={{ fontSize: 12, color: T.purple, fontWeight: 700 }}>{formatDateTime(t.performedAt)}</span>
+                          <button onClick={() => handleStartEditTreatment(t)} style={btnStyle('#F0E7F2', T.purpleDark)}>
+                            Düzenle
+                          </button>
+                          <button onClick={() => handleDeleteTreatment(t.id)} style={{ background: T.error, border: 'none', color: '#5A2030', padding: '6px 10px', borderRadius: 6, cursor: 'pointer', fontWeight: 700 }}>
+                            Sil
+                          </button>
+                        </div>
+                      </div>
 
-                  {t.productUsages && t.productUsages.length > 0 && (
-                    <div style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {t.productUsages.map((u) => (
-                        <span key={u.id} style={{ background: '#F0E7F2', color: T.purpleDark, padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>
-                          {u.product?.name} — {Number(u.quantity).toFixed(2)} {UNIT_LABELS[u.product?.unit]}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  <div style={{ fontSize: 13, color: T.bg, display: 'flex', gap: 18, marginBottom: 16, fontWeight: 600 }}>
-                    <span>Toplam Ücret: <b>₺{t.price || 0}</b></span>
-                    <span>Ödenen: <b style={{ color: T.success }}>₺{t.paidAmount || 0}</b></span>
-                  </div>
-
-                  <div style={{ background: '#F8F5F6', border: '1px solid #E2D5E5', borderRadius: 10, padding: 16 }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: T.bg, marginBottom: 12 }}>Görsel Karşılaştırma (Before / After)</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                      {['before', 'after'].map((type) => {
-                        const key = `${t.id}-${type}`;
-                        const photos = (t.photos || []).filter((p) => p.type === type.toUpperCase());
-                        // Henüz albüme taşınmamış eski tekli fotoğraf varsa (geçiş dönemi
-                        // yedeği) onu da göster, kaybolmasın.
-                        const legacyUrl = type === 'before' ? t.beforePhotoUrl : t.afterPhotoUrl;
-                        const showLegacy = photos.length === 0 && legacyUrl;
-                        const accentColor = type === 'before' ? '#0284C7' : T.success;
-
-                        return (
-                          <div key={type} style={{ background: T.white, border: '1px solid #CBD5E1', borderRadius: 8, padding: 10 }}>
-                            <span style={{ fontSize: 11, fontWeight: 800, color: accentColor, display: 'block', marginBottom: 8, textTransform: 'uppercase', textAlign: 'center' }}>
-                              {type === 'before' ? 'ÖNCESİ' : 'SONRASI'}
+                      {t.productUsages && t.productUsages.length > 0 && (
+                        <div style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {t.productUsages.map((u) => (
+                            <span key={u.id} style={{ background: '#F0E7F2', color: T.purpleDark, padding: '4px 10px', borderRadius: 12, fontSize: 12, fontWeight: 700 }}>
+                              {u.product?.name} — {Number(u.quantity).toFixed(2)} {UNIT_LABELS[u.product?.unit]}
                             </span>
-
-                            {photos.length === 0 && !showLegacy && (
-                              <div style={{ height: 120, background: '#F1F5F9', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8', fontSize: 12, marginBottom: 8 }}>
-                                Fotoğraf Yok
-                              </div>
-                            )}
-
-                            {(photos.length > 0 || showLegacy) && (
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
-                                {showLegacy && (
-                                  <div style={{ position: 'relative', width: 90, height: 90 }}>
-                                    <img src={legacyUrl} alt={type} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }} />
-                                  </div>
-                                )}
-                                {photos.map((photo) => (
-                                  <div key={photo.id} style={{ position: 'relative', width: 90, height: 90 }}>
-                                    <a href={photo.url} target="_blank" rel="noreferrer">
-                                      <img src={photo.url} alt={type} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }} />
-                                    </a>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeletePhoto(t.id, photo.id)}
-                                      title="Sil"
-                                      style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: T.error, color: '#5A2030', border: 'none', fontSize: 12, fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}
-                                    >
-                                      ×
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
-                            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: accentColor, color: '#fff', padding: '6px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
-                              {uploadingKey === key ? 'Yükleniyor...' : '+ Fotoğraf Ekle'}
-                              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handlePhotoUpload(t.id, e.target.files[0], type)} />
-                            </label>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
 
                   <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #EEE5F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

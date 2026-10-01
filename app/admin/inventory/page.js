@@ -274,10 +274,6 @@ export default function InventoryPage() {
     }
   };
 
-  // ─────────────────────────────────────────────
-  // STOK HAREKETİ
-  // ─────────────────────────────────────────────
-
   const openMovement = (product) => {
     setMovementProduct(product);
     setMovementQuantity('');
